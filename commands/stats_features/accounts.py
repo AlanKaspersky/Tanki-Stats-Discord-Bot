@@ -40,6 +40,7 @@ class AccountCommandsMixin:
         language = self._language_for_interaction(interaction)
 
         try:
+            # 1. Проверяем лимит аккаунтов у конкретного пользователя
             can_add, current_count, remaining = (
                 self.accounts_manager.can_add_more_accounts(interaction.user.id)
             )
@@ -54,6 +55,7 @@ class AccountCommandsMixin:
                 )
                 return
 
+            # 2. Проверяем, не привязал ли ЭТОТ ЖЕ пользователь этот аккаунт ранее
             user_accounts = self.accounts_manager.get_user_accounts(
                 interaction.user.id, case_insensitive=True
             )
@@ -90,6 +92,7 @@ class AccountCommandsMixin:
                 )
                 return
 
+            # 3. Проверка ЛС для новичков
             if not self.accounts_manager.has_verified_dm(interaction.user.id):
                 try:
                     test_embed = discord.Embed(
@@ -116,9 +119,12 @@ class AccountCommandsMixin:
                 {"user": nickname, "lang": "ru"}
             )
 
+            # === НАЧАЛО НОВОЙ ЛОГИКИ ===
+            # Проверяем, отслеживает ли КТО-ТО ЕЩЕ этот аккаунт в боте
             existing_file = self.accounts_manager.find_existing_account_file(nickname)
 
             if existing_file:
+                # Аккаунт уже есть в базе! Просто привязываем юзера к нему
                 success = self.accounts_manager.add_user_to_account(
                     nickname, api_url, interaction.user.id, account_name
                 )
@@ -142,7 +148,10 @@ class AccountCommandsMixin:
                         ephemeral=True,
                     )
                 return
+            # === КОНЕЦ НОВОЙ ЛОГИКИ ===
 
+            # Если файла нет — этот аккаунт добавляется впервые в истории бота.
+            # Только в этом случае мы дергаем API и ставим "точку отсчета".
             logger.info(
                 f"Первое добавление аккаунта {nickname}. Скачиваем стартовую статистику..."
             )
@@ -174,6 +183,7 @@ class AccountCommandsMixin:
                 )
                 return
 
+            # Создаем файл и записываем первого пользователя
             success = self.accounts_manager.add_user_to_account(
                 nickname,
                 api_url,
@@ -275,9 +285,10 @@ class AccountCommandsMixin:
         language = self._language_for_interaction(interaction)
 
         try:
+            # 🔧 Получаем аккаунты с регистронезависимым доступом
             user_accounts = self.accounts_manager.get_user_accounts(
                 interaction.user.id,
-                case_insensitive=True,
+                case_insensitive=True,  # ← регистронезависимо!
             )
 
             if not user_accounts:
@@ -291,9 +302,11 @@ class AccountCommandsMixin:
                 )
                 return
 
+            # 🔧 Ищем аккаунт по названию (регистронезависимо)
             target_nickname = None
             original_account_name = None
 
+            # Приводим введенное имя к нижнему регистру для сравнения
             search_name = account_name.lower()
 
             for acc_name_lower, acc_data in user_accounts.items():
@@ -306,6 +319,7 @@ class AccountCommandsMixin:
                     break
 
             if not target_nickname:
+                # 🔧 Показываем варианты, если имя не найдено (регистронезависимый поиск)
                 similar_names = []
                 for acc_name_lower, acc_data in user_accounts.items():
                     if search_name in acc_name_lower or acc_name_lower in search_name:
@@ -335,6 +349,7 @@ class AccountCommandsMixin:
                     )
                 return
 
+            # 🔧 Удаляем пользователя из аккаунта
             success = self.accounts_manager.remove_user_from_account(
                 target_nickname, interaction.user.id
             )

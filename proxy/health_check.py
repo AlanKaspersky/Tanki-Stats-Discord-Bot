@@ -33,6 +33,11 @@ class ProxyFilterReport:
     failed: int
     working_proxies: List[ProxyConfig]
     failed_proxy_ids: List[str]
+    candidate_count: Optional[int] = None
+
+    @property
+    def unchecked(self) -> int:
+        return max(0, (self.candidate_count or self.total) - self.total)
 
 
 async def _check_single_proxy(
@@ -88,6 +93,7 @@ async def filter_working_proxies(
     session: aiohttp.ClientSession,
     *,
     progress_callback: ProgressCallback = None,
+    working_target: int = 0,
 ) -> ProxyFilterReport:
     """Test each local HTTP inbound; return proxies that reach the API."""
     if not proxies:
@@ -119,21 +125,31 @@ async def filter_working_proxies(
             if progress_callback and (checked % 10 == 0 or checked == total):
                 await progress_callback(checked, total, len(working), len(failed_ids))
 
-    semaphore = asyncio.Semaphore(workers)
+    remaining = iter(proxies)
 
-    async def run_with_limit(proxy: ProxyConfig) -> None:
-        async with semaphore:
+    async def worker() -> None:
+        while working_target <= 0 or len(working) < working_target:
+            proxy = next(remaining, None)
+            if proxy is None:
+                return
             await check_one(proxy)
 
-    await asyncio.gather(*(run_with_limit(proxy) for proxy in proxies))
+    running = [asyncio.create_task(worker()) for _ in range(workers)]
+    try:
+        await asyncio.gather(*running)
+    except BaseException:
+        for task in running:
+            task.cancel()
+        await asyncio.gather(*running, return_exceptions=True)
+        raise
 
     if progress_callback:
-        await progress_callback(total, total, len(working), len(failed_ids))
+        await progress_callback(checked, total, len(working), len(failed_ids))
 
     logger.info(
         "Proxy health check done: %d/%d working, %d failed",
         len(working),
-        total,
+        checked,
         len(failed_ids),
     )
     if failure_counts:
@@ -144,9 +160,10 @@ async def filter_working_proxies(
             ),
         )
     return ProxyFilterReport(
-        total=total,
+        total=checked,
         working=len(working),
         failed=len(failed_ids),
         working_proxies=working,
         failed_proxy_ids=failed_ids,
+        candidate_count=total,
     )

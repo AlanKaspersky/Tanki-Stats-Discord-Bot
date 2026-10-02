@@ -14,7 +14,7 @@ from .stats_features.admin import AdminCommandsMixin
 from .stats_features.collection import CollectionMixin
 from .stats_features.delivery import DeliveryMixin
 from .stats_features.localization import LocalizationMixin
-from .stats_features.proxy_tasks import ProxyTasksMixin
+from .stats_features.proxy_tasks import ProxyTasksMixin, proxy_check_interval_hours
 from .stats_features.reports import ReportsMixin
 from .stats_features.views import ViewCommandsMixin
 from .stats_features.widget import WidgetMixin
@@ -45,6 +45,7 @@ class Stats(
         self._account_locks = {}
         self._registration_lock = asyncio.Lock()
         self._token_locks = {}
+        self.auto_proxy_check.change_interval(hours=proxy_check_interval_hours())
 
     def _account_lock(self, nickname):
         return self._account_locks.setdefault(nickname.casefold(), asyncio.Lock())

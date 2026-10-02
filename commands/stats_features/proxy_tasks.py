@@ -1,6 +1,8 @@
 from discord.ext import tasks
 import aiohttp
 import logging
+import math
+import os
 
 
 from .constants import ADMIN_IDS
@@ -8,11 +10,21 @@ from .constants import ADMIN_IDS
 logger = logging.getLogger(__name__)
 
 
+def proxy_check_interval_hours() -> float:
+    interval = float(os.getenv("PROXY_CHECK_INTERVAL_HOURS", "6"))
+    if not math.isfinite(interval) or interval <= 0:
+        raise ValueError("PROXY_CHECK_INTERVAL_HOURS must be a positive finite number")
+    return interval
+
+
 class ProxyTasksMixin:
-    @tasks.loop(hours=48.0)
+    @tasks.loop(hours=6.0)
     async def auto_proxy_check(self):
-        """Автоматическая проверка и восстановление пула прокси раз в 48 часов"""
-        logger.info("⏳ Запуск автоматической проверки прокси (раз в 48 часов)...")
+        """Обновляет рабочий пул из свежих ответов подписок."""
+        interval = self.auto_proxy_check.hours
+        logger.info(
+            "⏳ Запуск автоматической проверки прокси (интервал %g ч)...", interval
+        )
         await self.bot.wait_until_ready()
         if self.proxy_bootstrap is not None and not self.proxy_bootstrap.enabled:
             return
@@ -34,7 +46,12 @@ class ProxyTasksMixin:
                 )
 
             total_working = report.working if report else 0
-            msg = f"🔄 **Автоматическая проверка прокси (Раз в 48 часов):**\n✅ Проверка завершена! Найдено живых прокси: **{total_working}**"
+            msg = (
+                f"🔄 **Автоматическое обновление прокси (каждые {interval:g} ч):**\n"
+                f"✅ Найдено рабочих прокси: **{total_working}**.\n"
+                f"Проверено: **{report.total}**, ошибок: **{report.failed}**, "
+                f"не проверено: **{report.unchecked}**."
+            )
             logger.info(
                 f"✅ Авто-проверка завершена. Реально живых прокси: {total_working}"
             )

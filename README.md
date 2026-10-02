@@ -192,7 +192,7 @@ For proxy access, use `XRAY_ENABLED=true`, provide a compatible Xray binary, and
 
 ### First Startup
 
-Start the process in a terminal and inspect its output. A valid startup should reach Discord login, extension loading, and slash-command synchronization. Proxy loading may take additional time when enabled.
+Start the process in a terminal and inspect its output. A valid startup should reach Discord login, extension loading, and slash-command synchronization. When proxies are enabled, startup uses a usable local cache; source downloads and health checks run separately after Discord readiness.
 
 The application loads its command extension during `setup_hook`; a normal Discord reconnect does not load it again. If proxy initialization fails, the error is logged and the bot can continue with no active pool. Profile requests then use direct access.
 
@@ -217,11 +217,11 @@ Boolean proxy settings recognize `1`, `true`, and `yes` as enabled. Use the exam
 | `PROXIES_SOURCES` | `proxies_sources.txt` | Source file containing VLESS links and subscription URLs |
 | `PROXIES_JSON` | `proxies.json` | Normalized proxy cache |
 | `XRAY_CONFIG_PATH` | `xray_config.runtime.json` | Generated Xray runtime configuration |
-| `REFRESH_PROXIES_ON_START` | `true` | Reload sources on startup rather than relying on an existing cache |
+| `REFRESH_PROXIES_ON_START` | `true` | Legacy setting retained for compatibility; source refresh runs in the background after Discord readiness |
 | `PROXY_BASE_PORT` | `18001` | First local HTTP inbound port assigned to the proxy list |
 | `MAX_PROXIES` | `0` | Maximum loaded proxies; `0` keeps all available entries |
 
-When `REFRESH_PROXIES_ON_START=false`, a missing cache still causes source loading. Generated proxy files contain configuration details and should be treated as private runtime data.
+Startup uses the local cache without downloading sources or saving unverified candidates. A missing, empty, or oversized cache leaves the pool inactive until the background check finds working routes. Automatic refresh runs after Discord readiness regardless of the legacy `REFRESH_PROXIES_ON_START` value. Generated proxy files contain configuration details and should be treated as private runtime data.
 
 ### Collection Settings
 
@@ -254,6 +254,8 @@ Account-level retries, proxy-level attempts, timeouts, and emergency recovery al
 | `PROXY_CHECK_TIMEOUT` | `15` | Health-check request timeout, in seconds |
 | `PROXY_CHECK_XRAY_WARMUP` | `1.5` | Warmup after starting a health-check Xray configuration, in seconds |
 | `PROXY_CHECK_BATCH_SIZE` | `400` | Number of configurations checked in an Xray batch |
+| `PROXY_CHECK_INTERVAL_HOURS` | `6` | Automatic refresh interval in hours; must be positive and finite; applied on restart |
+| `PROXY_WORKING_TARGET` | `50` | Desired working routes for automatic and emergency refreshes; `0` checks every candidate |
 | `PROXY_CHECK_API_URL` | `https://ratings.tankionline.com/api/eu/profile/` | Endpoint used for health probes |
 | `PROXY_CHECK_TEST_USER` | `Tenobyte` | Profile nickname requested during a health probe |
 
@@ -267,7 +269,6 @@ Not every advanced variable is included in `.env.example`; supported variables c
 | Account limit | `utils/accounts_manager.py` | Three subscriptions per Discord user |
 | Daily schedule | `commands/stats_features/collection.py` | 02:00 UTC |
 | Pending-report retry interval | `commands/stats_features/delivery.py` | Five minutes |
-| Automatic proxy-check interval | `commands/stats_features/proxy_tasks.py` | 48 hours |
 | OAuth redirect URI | `commands/stats_features/widget.py` | `https://discord.com` |
 | Report rank thresholds and emoji references | `commands/stats_features/reports.py` | Current presentation tables |
 | Help and information links | `commands/stats_features/views.py` | Project-specific external destinations |
@@ -389,7 +390,7 @@ A force command is not a private preview for the administrator: reports are queu
 
 `!proxycheck` reports progress while checking configurations. It keeps working raw VLESS entries and removes raw entries that did not pass that run. Subscription URLs and comments are retained so subscriptions can still provide new entries later.
 
-Back up `proxies_sources.txt` before a manual filter if the original raw list must be preserved. The automatic 48-hour check does not rewrite that source list.
+Back up `proxies_sources.txt` before a manual filter if the original raw list must be preserved. Automatic refreshes do not rewrite that source list.
 
 ### Command Blacklist
 
@@ -552,6 +553,8 @@ The example subscription is deliberately nonfunctional. Use your provider's actu
 
 Subscription responses can contain plain VLESS lines or Base64-encoded content. The loader parses the returned lines, combines them with raw sources, and produces normalized proxy records. Subscription requests use their own timeout and application user agent.
 
+Base64 decoding validates the encoded input and UTF-8 output; other plain text is preserved instead of being partially decoded. Some public lists already contain placeholders such as `[emailprotected]` in place of a VLESS user ID and server address. These entries cannot be reconstructed from the placeholder and are skipped. Valid neighboring entries remain available. Download summaries identify the affected subscription by its position in the URL list and hostname, without printing its full URL.
+
 ### Parsing and Compatibility
 
 The source parser extracts addresses, ports, UUIDs, names, security, transport, and relevant TLS or REALITY parameters. A compatibility filter removes configurations that the current generator cannot use.
@@ -564,6 +567,8 @@ User IDs are also validated before startup and cache loading. Validation follows
 
 This filter describes the current implementation's accepted configurations. It is not a promise that every VLESS URI, every transport extension, or every Xray version is supported. A URI can parse successfully and still fail Xray configuration validation or an actual network probe.
 
+Malformed and incompatible source entries are counted in one warning summary per parsing pass. Per-entry diagnostics use debug level and omit the original URI and parser exception text. This keeps damaged lists from producing thousands of warning lines containing connection credentials. A placeholder appearing only in a label or fragment does not invalidate an otherwise valid address.
+
 ### Generated Files and Local Ports
 
 | File | Role |
@@ -575,6 +580,8 @@ This filter describes the current implementation's accepted configurations. It i
 | `xray` or `xray.exe` | Platform-specific executable managed by the runner |
 
 Serving inbound ports are assigned consecutively from `PROXY_BASE_PORT`, including when loading a cache. The checker requests separate available ports from the operating system and excludes the serving ports. Both processes bind to `127.0.0.1`, so external clients do not need access to those ports. Do not expose them publicly as part of installing the bot. No separate checker port setting is required.
+
+Parsed source candidates have no serving port until they pass health checks. Their count can exceed the available TCP port range because the checker tests them in separate batches. At startup, a legacy cache larger than `65536 - PROXY_BASE_PORT` is skipped without overwriting it. For example, 70,813 cached entries cannot fit from port 18,001. A successful background check replaces that cache with the filtered working pool. Until a pool exists, profile requests use the existing direct-access fallback.
 
 The cache and generated Xray configuration can contain UUIDs and other private connection material. They are runtime files, not suitable public example configuration.
 
@@ -590,6 +597,12 @@ When every proxy is in cooldown, the client can report pool exhaustion instead o
 
 Health checks start configurations in batches in a separate Xray process and request a test profile through its local ports. The test nickname and API URL are configurable. During parsing, subscription downloads, probes, and batch splitting, commands and scheduled collection continue using the serving Xray and current pool. Candidate port assignments do not modify the serving records.
 
+Automatic and emergency refreshes stop scheduling new probes once `PROXY_WORKING_TARGET` working routes have been found. Already running requests finish, so the saved pool can exceed the target by up to the worker count minus one. Unchecked candidates are reported separately from failures. Batch splitting also stops once enough working routes have been found; an untested half is not recorded as failed.
+
+For a bounded refresh, entries from the previous pool are checked first only if their IDs still occur in the freshly downloaded sources. Their new source parameters are used; an entry removed from its subscription is not restored from the cache. Remaining candidates are shuffled to avoid always selecting the first source entries. `MAX_PROXIES` still caps the parsed candidate list independently of the working target.
+
+If the sources contain fewer working routes than the target, all candidates are checked and any working routes are saved. A refresh with no working routes leaves the previous pool in place. `PROXY_WORKING_TARGET=0` restores a full automatic scan. Manual `!proxycheck` always checks the full parsed candidate list before rewriting raw source lines.
+
 If a batch fails Xray configuration validation, the checker splits it to isolate problematic configurations. This allows a single malformed entry to be rejected without automatically discarding every other proxy in that batch.
 
 HTTP 429 demonstrates that the request reached the upstream API and is accepted as evidence of connectivity during filtering. It does not mean the proxy can provide unlimited successful profile requests during normal collection.
@@ -598,13 +611,17 @@ Failed batches also log an aggregate reason summary at warning level: HTTP statu
 
 Checks are serialized with a maintenance lock. After a successful scan, the checker stops and removes its temporary configuration. Only then does the bot acquire the pool-recovery lock, wait for ongoing profile requests or a collection round, restart the serving Xray, and publish the filtered pool. Requests can briefly wait during this final restart; they no longer wait for the entire source scan.
 
+Manual `!proxycheck` updates the same Discord status message while waiting for an existing check, downloading each subscription, parsing candidates, probing routes, and switching the working pool. The numeric counter starts at zero after candidates are parsed. A command invoked during the automatic startup check waits in the queue before beginning its own full scan. Large subscription decoding and VLESS parsing run in worker threads so they do not block Discord's event loop. Failed status-message updates are recorded in the logs.
+
 A failed or cancelled scan leaves the serving runtime and pool in place. If the final serving restart fails or is cancelled, the bot attempts to restore the previous runtime before releasing the replacement lock. Shutdown cancels an active check and stops both managed processes. Hard process termination can leave a temporary checker directory; treat it as private credential material.
 
 An independent check does not make an exhausted or unreachable serving pool healthy. If collection requires emergency recovery, it can still wait for usable routes. Direct access remains the existing fallback when no pool exists; `XRAY_ENABLED=true` does not enforce proxy-only access.
 
 ### Automatic Checks and Emergency Recovery
 
-The automatic check runs after Discord readiness and repeats on a 48-hour interval. It preserves the source list while updating the working cache and pool. The interval is measured by the task loop; it is not a fixed wall-clock time every second day.
+The automatic check runs after Discord readiness and repeats every `PROXY_CHECK_INTERVAL_HOURS` hours, defaulting to six. It downloads the current subscription contents on each run and preserves the source list while updating the working cache and pool. The interval is measured by the task loop rather than a fixed wall-clock schedule. Change the environment setting and restart the bot to apply a different interval.
+
+The default target of 50 routes is a starting value, not a guarantee of suitable capacity for every installation. Increase it when collection needs a larger reserve, or use zero for a complete scan. A short scan can still take time when sources are unavailable or few candidates work; it does not guarantee a specific completion time.
 
 A normal full collection can recover an exhausted pool up to `DAILY_STATS_MAX_RECOVERIES` times. The default is two recoveries. Remaining failures are reported and retained as failures for that collection rather than causing unlimited recovery attempts.
 
@@ -626,7 +643,7 @@ Extension unloading cancels and awaits background loops before stopping Xray and
 |------|--------|---------------------|
 | Daily collection | 02:00 UTC each day | Fetch profiles, save snapshots, queue reports, and attempt delivery |
 | Pending-report retry | First pass after readiness, then every five minutes | Retry recipients whose saved reports remain unacknowledged |
-| Automatic proxy check | First pass after readiness, then every 48 hours | Refresh and verify proxy availability |
+| Automatic proxy check | First pass after readiness, then every six hours by default | Download fresh sources and verify routes until the configured target is reached |
 
 The daily task uses a UTC time definition. On a Moscow host this corresponds to 05:00, regardless of whether the terminal displays local timestamps. Changing a server timezone or adding a `TZ` environment variable does not alter that source-defined schedule.
 
@@ -1009,7 +1026,7 @@ Transfer the application source and assets, then prepare the host-specific runti
 | `.env` | Create for the server | Preserve the server's existing credentials and settings |
 | `accounts/` | Transfer privately only when migrating real state | Preserve the existing production directory |
 | `proxies_sources.txt` | Configure privately when using proxies | Preserve unless intentionally changing sources |
-| `proxies.json` | Optional compatible cache | Preserve or regenerate according to the startup setting |
+| `proxies.json` | Optional compatible cache | Preserve; startup uses it when it fits, and successful background checks replace it |
 | `xray_config.runtime.json` | Generated by the application | Allow the application to regenerate it |
 | `.xray-check-*/` | Not needed | Temporary private checker state; never publish or copy into a deployment |
 | Linux `xray` executable | Install a compatible build | Keep or deliberately update the compatible build |
@@ -1196,8 +1213,12 @@ Here `python` means the selected virtual environment's interpreter. On Windows i
 | `test_client.py` | Profile API responses, timeouts, proxy failures, rate-limit behavior |
 | `test_proxy_lifecycle.py` | Parallel registration and daily delivery during scanning, independent ports/configs, serialized checks, cancellation, shutdown, and replacement rollback |
 | `test_proxy_health.py` | Health-check failure summaries, accepted responses, unsupported VLESS flows, and invalid user IDs |
+| `test_proxy_refresh.py` | Early stopping, honest checked/failed/unchecked counts, fresh source parameters, complete manual checks, worker cancellation, and configurable intervals |
+| `test_proxy_sources.py` | Masked source entries, aggregate diagnostics, credential-safe parser logs, valid IPv6 addresses, and plain/Base64 subscription decoding |
+| `test_proxy_startup.py` | Cached startup without downloads, missing and oversized caches, background pool creation, and cache preservation after a failed refresh |
+| `test_proxy_progress.py` | Visible queue and subscription stages, initial probe counter, responsive parsing, and updates to the same Discord message |
 
-The most recent local verification passed 70 unit tests on Python 3.12. Ruff checks and dependency consistency checks also passed during the implementation verification.
+The most recent local verification passed 98 unit tests on Python 3.12. Ruff checks and dependency consistency checks also passed during the implementation verification.
 
 Synthetic fixtures compare the refactored reports, views, and widget payload with the original behavior. They are test data rather than exported production snapshots.
 
@@ -1331,7 +1352,7 @@ On Windows, use `.\xray.exe` in place of `./xray`. This validates configuration;
 
 Check `PROXIES_SOURCES`, source-file contents, subscription availability, and the logs for compatibility rejections. Empty, expired, or malformed subscription responses can leave the pool empty.
 
-Check `REFRESH_PROXIES_ON_START` and whether the existing cache is the one you intended to use. With proxies disabled, no active pool is expected.
+Check whether the existing cache is the one you intended to use. Startup skips missing, empty, or oversized caches and lets the background check build a working pool. An oversized-cache warning does not require deleting the cache: a successful check replaces it. The legacy `REFRESH_PROXIES_ON_START` setting does not force a foreground source download. With proxies disabled, no active pool is expected.
 
 ### Every Local Proxy Port Is Refused
 

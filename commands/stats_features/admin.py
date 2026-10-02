@@ -27,6 +27,16 @@ class AdminCommandsMixin:
         )
         last_edit_at = 0.0
 
+        async def stage(text: str) -> None:
+            nonlocal last_edit_at
+            last_edit_at = 0.0
+            try:
+                await status_msg.edit(content=f"🔄 Проверка прокси: {text}")
+            except discord.HTTPException:
+                logger.warning(
+                    "Не удалось обновить этап проверки в Discord", exc_info=True
+                )
+
         async def progress(checked: int, total: int, working: int, failed: int) -> None:
             nonlocal last_edit_at
             now = asyncio.get_running_loop().time()
@@ -41,7 +51,7 @@ class AdminCommandsMixin:
                     )
                 )
             except discord.HTTPException:
-                pass
+                logger.warning("Не удалось обновить счётчик в Discord", exc_info=True)
 
         session = self.proxy_session
         close_session = False
@@ -55,6 +65,7 @@ class AdminCommandsMixin:
                 progress_callback=progress,
                 rewrite_sources=True,
                 replacement_lock=self._pool_recovery_lock,
+                stage_callback=stage,
             )
             await status_msg.edit(
                 content=(

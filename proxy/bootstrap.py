@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
 from copy import deepcopy
 import logging
 import os
+import random
 from pathlib import Path
 from typing import Awaitable, Callable, List, Optional
 
@@ -22,6 +24,7 @@ from proxy.xray_config import write_xray_config
 from proxy.xray_runner import XrayRunner
 
 ProgressCallback = Optional[Callable[[int, int, int, int], Awaitable[None]]]
+StageCallback = Optional[Callable[[str], Awaitable[None]]]
 
 logger = logging.getLogger(__name__)
 
@@ -75,21 +78,33 @@ class ProxyBootstrap:
             )
 
     async def start(self, session: Optional[aiohttp.ClientSession] = None) -> None:
-        """Load proxies and start xray if enabled."""
+        """Start the cached serving pool; refresh sources separately after readiness."""
         self._stopping = False
         if not self.enabled:
             logger.info("XRAY_ENABLED=false, proxy pool disabled")
             return
 
-        if self.refresh_on_start or not self.proxies_json_path.exists():
-            await self.refresh_proxies(session)
-        else:
-            self._proxies = load_proxies_json(self.proxies_json_path)
-
-        if not self._proxies:
-            raise RuntimeError(
-                f"No proxies loaded. Add vless links or subscriptions to {self.sources_path}"
+        if self.refresh_on_start:
+            logger.info(
+                "Обновление источников при старте перенесено в отдельную фоновую проверку"
             )
+        cached = load_proxies_json(self.proxies_json_path)
+        if not cached:
+            logger.info(
+                "Кэш прокси отсутствует или пуст; рабочий пул будет создан фоновой проверкой"
+            )
+            return
+        if not 1 <= self.base_port <= 65535:
+            raise ValueError("PROXY_BASE_PORT must be between 1 and 65535")
+        capacity = 65536 - self.base_port
+        if len(cached) > capacity:
+            logger.warning(
+                "Кэш из %d прокси превышает доступные %d локальных портов; пропускаю запуск кэша, фоновая проверка соберёт рабочий пул",
+                len(cached),
+                capacity,
+            )
+            return
+        self._proxies = cached
 
         self._prepare_proxy_ports(self._proxies)
         write_xray_config(self.xray_config_path, self._proxies)
@@ -112,9 +127,13 @@ class ProxyBootstrap:
     async def parse_proxies_from_sources(
         self,
         session: Optional[aiohttp.ClientSession] = None,
+        *,
+        stage_callback: StageCallback = None,
     ) -> List[ProxyConfig]:
         """Parse all vless configs from proxies_sources.txt (incl. subscriptions)."""
-        vless_uris, subscription_urls = load_sources_file(self.sources_path)
+        vless_uris, subscription_urls = await asyncio.to_thread(
+            load_sources_file, self.sources_path
+        )
 
         subscription_content: List[str] = []
         if subscription_urls:
@@ -124,24 +143,34 @@ class ProxyBootstrap:
                 close_session = True
             try:
                 subscription_content = await fetch_all_subscriptions(
-                    subscription_urls, session
+                    subscription_urls, session, stage_callback=stage_callback
                 )
             finally:
                 if close_session and session:
                     await session.close()
 
+        if stage_callback:
+            await stage_callback("Разбор и проверка совместимости полученных VLESS...")
+        return await asyncio.to_thread(
+            self._parse_source_content, vless_uris, subscription_content
+        )
+
+    def _parse_source_content(
+        self, vless_uris: List[str], subscription_content: List[str]
+    ) -> List[ProxyConfig]:
         all_vless_lines = list(vless_uris)
         for content in subscription_content:
             all_vless_lines.extend(extract_vless_lines(content))
 
         seen_ids: set[str] = set()
         proxies: List[ProxyConfig] = []
-        port_index = 0
         skipped = 0
+        failure_counts: Counter[str] = Counter()
 
         for line in all_vless_lines:
-            local_port = self.base_port + port_index
-            config = parse_vless_uri(line, local_http_port=local_port)
+            config = parse_vless_uri(
+                line, local_http_port=0, failure_counts=failure_counts
+            )
             if config is None:
                 skipped += 1
                 continue
@@ -149,7 +178,6 @@ class ProxyBootstrap:
                 continue
             seen_ids.add(config.id)
             proxies.append(config)
-            port_index += 1
 
             if self.max_proxies > 0 and len(proxies) >= self.max_proxies:
                 break
@@ -160,20 +188,29 @@ class ProxyBootstrap:
             len(all_vless_lines),
             skipped,
         )
+        if failure_counts:
+            logger.warning(
+                "Skipped source entries: %s",
+                ", ".join(
+                    f"{reason}: {count}"
+                    for reason, count in sorted(failure_counts.items())
+                ),
+            )
         return proxies
 
     async def refresh_proxies(
         self, session: Optional[aiohttp.ClientSession] = None
     ) -> None:
-        """Parse sources and save proxies.json."""
-        proxies = await self.parse_proxies_from_sources(session)
-        if not proxies:
-            logger.error("No valid vless configs parsed from sources")
-            return
-
-        self._proxies = proxies
-        save_proxies_json(self.proxies_json_path, proxies)
-        logger.info("Refreshed %d proxies from sources", len(proxies))
+        """Refresh through health checks; never persist unverified candidate lists."""
+        if session is None:
+            async with aiohttp.ClientSession() as owned_session:
+                await self.filter_working_proxies_from_sources(
+                    owned_session, rewrite_sources=False
+                )
+        else:
+            await self.filter_working_proxies_from_sources(
+                session, rewrite_sources=False
+            )
 
     def _prepare_proxy_ports(self, proxies: List[ProxyConfig]) -> None:
         if self.base_port < 1 or self.base_port + len(proxies) - 1 > 65535:
@@ -229,6 +266,7 @@ class ProxyBootstrap:
         total_all: int = 0,
         working_offset: int = 0,
         failed_offset: int = 0,
+        working_target: int = 0,
     ) -> ProxyFilterReport:
         """Run health check via xray; bisect batch if xray rejects the config."""
         if not proxies:
@@ -259,7 +297,11 @@ class ProxyBootstrap:
                 total_all=total_all,
                 working_offset=working_offset,
                 failed_offset=failed_offset,
+                working_target=working_target,
             )
+            if working_target > 0 and left.working >= working_target:
+                left.candidate_count = len(proxies)
+                return left
             right = await self._health_check_proxies_resilient(
                 proxies[mid:],
                 session,
@@ -268,6 +310,7 @@ class ProxyBootstrap:
                 total_all=total_all,
                 working_offset=working_offset + left.working,
                 failed_offset=failed_offset + left.failed,
+                working_target=max(0, working_target - left.working),
             )
             return ProxyFilterReport(
                 total=left.total + right.total,
@@ -275,6 +318,7 @@ class ProxyBootstrap:
                 failed=left.failed + right.failed,
                 working_proxies=left.working_proxies + right.working_proxies,
                 failed_proxy_ids=left.failed_proxy_ids + right.failed_proxy_ids,
+                candidate_count=len(proxies),
             )
 
         async def batch_progress(
@@ -293,6 +337,7 @@ class ProxyBootstrap:
             proxies,
             session,
             progress_callback=batch_progress,
+            working_target=working_target,
         )
 
     async def filter_working_proxies_from_sources(
@@ -302,11 +347,27 @@ class ProxyBootstrap:
         progress_callback: ProgressCallback = None,
         rewrite_sources: bool = True,
         replacement_lock: Optional[asyncio.Lock] = None,
+        working_target: Optional[int] = None,
+        stage_callback: StageCallback = None,
     ) -> ProxyFilterReport:
         """Scan independently; acquire the serving lock only to publish a new pool."""
+        if self._check_lock.locked() and stage_callback:
+            await stage_callback(
+                "Ожидание завершения уже запущенной проверки прокси..."
+            )
         async with self._check_lock:
             if self._stopping:
                 raise RuntimeError("Proxy bootstrap is stopping")
+            if working_target is None:
+                working_target = (
+                    0
+                    if rewrite_sources
+                    else int(os.getenv("PROXY_WORKING_TARGET", "50"))
+                )
+            if working_target < 0:
+                raise ValueError("PROXY_WORKING_TARGET must be zero or positive")
+            if rewrite_sources and working_target:
+                raise ValueError("Source rewriting requires a complete proxy check")
             self._check_task = asyncio.current_task()
             try:
                 return await self._filter_working_proxies_from_sources(
@@ -314,6 +375,8 @@ class ProxyBootstrap:
                     progress_callback=progress_callback,
                     rewrite_sources=rewrite_sources,
                     replacement_lock=replacement_lock,
+                    working_target=working_target,
+                    stage_callback=stage_callback,
                 )
             except Exception:
                 logger.exception("Проверка прокси не завершена")
@@ -364,14 +427,29 @@ class ProxyBootstrap:
         progress_callback: ProgressCallback = None,
         rewrite_sources: bool = True,
         replacement_lock: Optional[asyncio.Lock] = None,
+        working_target: int = 0,
+        stage_callback: StageCallback = None,
     ) -> ProxyFilterReport:
         """Check all proxies from sources; save only working ones to proxies.json."""
         if not self.enabled:
             raise RuntimeError("XRAY_ENABLED=false, proxy check unavailable")
 
-        candidates = deepcopy(await self.parse_proxies_from_sources(session))
+        if stage_callback:
+            await stage_callback("Загрузка источников прокси...")
+        candidates = deepcopy(
+            await self.parse_proxies_from_sources(
+                session, stage_callback=stage_callback
+            )
+        )
         if not candidates:
             raise RuntimeError(f"No proxies parsed from {self.sources_path}")
+
+        if working_target > 0:
+            previous_ids = {proxy.id for proxy in self._proxies}
+            known = [proxy for proxy in candidates if proxy.id in previous_ids]
+            others = [proxy for proxy in candidates if proxy.id not in previous_ids]
+            random.shuffle(others)
+            candidates = known + others
 
         binary = XrayRunner.resolve_binary(self.base_dir, os.getenv("XRAY_BINARY_PATH"))
         self._checker = XrayProxyChecker(
@@ -386,6 +464,8 @@ class ProxyBootstrap:
         batch_size = int(os.getenv("PROXY_CHECK_BATCH_SIZE", "400"))
         batch_size = max(1, batch_size)
         total = len(candidates)
+        if progress_callback:
+            await progress_callback(0, total, 0, 0)
 
         all_working: List[ProxyConfig] = []
         all_failed_ids: List[str] = []
@@ -401,6 +481,7 @@ class ProxyBootstrap:
                 total_all=total,
                 working_offset=len(all_working),
                 failed_offset=len(all_failed_ids),
+                working_target=max(0, working_target - len(all_working)),
             )
             all_working.extend(batch_report.working_proxies)
             all_failed_ids.extend(batch_report.failed_proxy_ids)
@@ -417,18 +498,27 @@ class ProxyBootstrap:
             logger.info(
                 "Proxy check batch %d-%d/%d: %d working, %d failed so far",
                 start + 1,
-                start + len(batch),
+                checked_so_far,
                 total,
                 len(all_working),
                 len(all_failed_ids),
             )
+            if working_target > 0 and len(all_working) >= working_target:
+                logger.info(
+                    "Proxy target reached: %d working; checked %d/%d candidates",
+                    len(all_working),
+                    checked_so_far,
+                    total,
+                )
+                break
 
         report = ProxyFilterReport(
-            total=total,
+            total=checked_so_far,
             working=len(all_working),
             failed=len(all_failed_ids),
             working_proxies=all_working,
             failed_proxy_ids=all_failed_ids,
+            candidate_count=total,
         )
 
         working = report.working_proxies
@@ -438,6 +528,11 @@ class ProxyBootstrap:
             )
 
         await self._stop_checker()
+        if stage_callback:
+            await stage_callback(
+                f"Проверено {report.total}/{total}; рабочих: {len(working)}. "
+                "Ожидание текущих запросов и переключение рабочего пула..."
+            )
         async with replacement_lock or asyncio.Lock():
             await self._publish_working_proxies(deepcopy(working))
 
@@ -448,10 +543,11 @@ class ProxyBootstrap:
             )
 
         logger.info(
-            "Filtered proxies: %d working saved to %s, %d removed",
+            "Filtered proxies: %d working saved to %s, %d failed, %d unchecked",
             len(working),
             self.proxies_json_path,
             report.failed,
+            report.unchecked,
         )
         return report
 

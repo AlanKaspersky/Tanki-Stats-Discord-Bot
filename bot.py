@@ -52,6 +52,7 @@ class TankiBot(commands.Bot):
             traceback.print_exc()
             raise
 
+        # Синхронизируем команды
         try:
             synced = await self.tree.sync()
             logger.info(f"✅ Синхронизировано {len(synced)} команд:")
@@ -64,44 +65,60 @@ class TankiBot(commands.Bot):
 bot = TankiBot(command_prefix="!", intents=intents, tree_cls=TankiCommandTree)
 
 
+# 1. Фильтр для обычных текстовых команд (!команды)
 @bot.event
 async def on_message(message: discord.Message):
+    # Игнорируем сообщения от других ботов
     if message.author.bot:
         return
 
+    # 🛑 1. ПРОВЕРКА ЧЕРНОГО СПИСКА
     if accounts_manager.is_blacklisted(message.author.id):
         return
 
+    # ⏱️ 2. АВТОУДАЛЕНИЕ ПРЕФИКСНЫХ КОМАНД (кроме proxycheck)
+    # Проверяем, начинается ли сообщение с нашего префикса '!'
     if message.content.startswith("!"):
+        # Выделяем первое слово (саму команду) без префикса
         command_name = message.content.split()[0][1:].lower()
 
+        # Если это НЕ proxycheck, временно подменяем функцию отправки сообщений context
         if command_name != "proxycheck":
             ctx = await bot.get_context(message)
 
+            # Если команда вообще существует в боте
             if ctx.valid:
                 orig_send = ctx.send
 
+                # Создаем хитрую прослойку для ctx.send
                 async def auto_delete_send(*args, **kwargs):
+                    # Если в команде не указано время удаления вручную, ставим 300 секунд (5 минут)
                     if "delete_after" not in kwargs:
                         kwargs["delete_after"] = 300.0
 
+                    # Отправляем сообщение бота
                     bot_message = await orig_send(*args, **kwargs)
 
+                    # Запускаем фоновую задачу на удаление сообщения самого пользователя
                     async def delete_user_msg():
                         await asyncio.sleep(300)
                         try:
                             await message.delete()
                         except discord.HTTPException:
-                            pass
+                            pass  # Игнорируем ошибку, если у бота нет прав на удаление сообщений или оно уже удалено
 
                     asyncio.create_task(delete_user_msg())
                     return bot_message
 
+                # Подменяем функцию отправки для текущего вызова команды
                 ctx.send = auto_delete_send
 
+                # Запускаем команду с модифицированным контекстом
                 await bot.invoke(ctx)
                 return
 
+    # Если это была обычная команда вроде !proxycheck или просто текст,
+    # даем боту обработать её в стандартном режиме:
     await bot.process_commands(message)
 
 
@@ -111,6 +128,7 @@ async def on_ready():
     logger.info(f"ID бота: {bot.user.id}")
 
 
+# Команда для принудительной синхронизации
 @bot.command()
 @commands.is_owner()
 async def sync(ctx):
