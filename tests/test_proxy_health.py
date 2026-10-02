@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import aiohttp
 
@@ -112,7 +112,10 @@ class ProxyHealthTests(unittest.IsolatedAsyncioTestCase):
                 ]
             )
         )
-        with self.assertLogs("proxy.health_check", level="INFO") as captured:
+        with (
+            patch.dict("os.environ", {"PROXY_CHECK_ATTEMPTS": "1"}),
+            self.assertLogs("proxy.health_check", level="INFO") as captured,
+        ):
             report = await filter_working_proxies(proxies, session)
         self.assertEqual((report.total, report.working, report.failed), (4, 2, 2))
         self.assertEqual({proxy.id for proxy in report.working_proxies}, {"2", "3"})

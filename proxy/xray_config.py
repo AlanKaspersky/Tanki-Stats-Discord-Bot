@@ -15,24 +15,57 @@ def _build_outbound(proxy: ProxyConfig) -> Dict[str, Any]:
     stream_settings = deepcopy(proxy.stream_settings)
     stream_settings["network"] = normalize_network(proxy.network, proxy.security)
     stream_settings["security"] = proxy.security
+    if "tcpSettings" in stream_settings:
+        stream_settings.setdefault("rawSettings", stream_settings.pop("tcpSettings"))
+    if "splithttpSettings" in stream_settings:
+        stream_settings.setdefault(
+            "xhttpSettings", stream_settings.pop("splithttpSettings")
+        )
+    network = stream_settings["network"]
+    if network in ("ws", "httpupgrade", "xhttp"):
+        key = {
+            "ws": "wsSettings",
+            "httpupgrade": "httpupgradeSettings",
+            "xhttp": "xhttpSettings",
+        }[network]
+        transport = stream_settings.setdefault(key, {})
+        headers = transport.get("headers", {})
+        for key in list(headers):
+            if key.lower() == "host":
+                transport.setdefault("host", headers.pop(key))
+        if not headers:
+            transport.pop("headers", None)
+        transport.setdefault("host", "")
+        transport.setdefault("path", "/")
+        if network == "xhttp":
+            transport.setdefault("mode", "auto")
+    elif network == "grpc":
+        transport = stream_settings.setdefault("grpcSettings", {})
+        transport.setdefault("serviceName", "")
+        transport.setdefault("multiMode", False)
+        transport.setdefault("authority", "")
 
     if proxy.security == "reality":
         stream_settings["security"] = "reality"
         settings = stream_settings.setdefault("realitySettings", {})
         settings.pop("password", None)
-        settings.update({
-            "serverName": proxy.sni,
-            "fingerprint": proxy.fp,
-            "publicKey": proxy.public_key,
-            "shortId": proxy.short_id,
-            "show": False,
-        })
+        settings.update(
+            {
+                "serverName": proxy.sni,
+                "fingerprint": proxy.fp,
+                "publicKey": proxy.public_key,
+                "shortId": proxy.short_id,
+                "show": False,
+            }
+        )
     elif proxy.security == "tls":
         stream_settings["security"] = "tls"
-        stream_settings.setdefault("tlsSettings", {}).update({
-            "serverName": proxy.sni or proxy.address,
-            "fingerprint": proxy.fp,
-        })
+        stream_settings.setdefault("tlsSettings", {}).update(
+            {
+                "serverName": proxy.sni or proxy.address,
+                "fingerprint": proxy.fp,
+            }
+        )
 
     user = deepcopy(proxy.user_settings)
     user["id"] = proxy.uuid
@@ -47,13 +80,14 @@ def _build_outbound(proxy: ProxyConfig) -> Dict[str, Any]:
         "tag": proxy.outbound_tag,
         "protocol": "vless",
         "settings": {
+            **deepcopy(proxy.outbound_options.get("settings", {})),
             "vnext": [
                 {
                     "address": proxy.address,
                     "port": proxy.port,
                     "users": [user],
                 }
-            ]
+            ],
         },
         "streamSettings": stream_settings,
     }

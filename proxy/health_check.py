@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import math
 from collections import Counter
 from dataclasses import dataclass
 from typing import Awaitable, Callable, List, Optional
@@ -20,7 +21,18 @@ API_URL = os.getenv(
 
 
 def profile_api_timeout() -> aiohttp.ClientTimeout:
-    return aiohttp.ClientTimeout(total=float(os.getenv("PROXY_CHECK_TIMEOUT", "15")))
+    def _env_float(key, default):
+        value = float(os.getenv(key, default))
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{key} must be positive and finite")
+        return value
+
+    total = _env_float("PROXY_CHECK_TIMEOUT", "20")
+    return aiohttp.ClientTimeout(
+        total=total,
+        connect=min(total, _env_float("PROXY_CHECK_CONNECT_TIMEOUT", "10")),
+        sock_read=min(total, _env_float("PROXY_CHECK_READ_TIMEOUT", "15")),
+    )
 
 
 ProgressCallback = Optional[Callable[[int, int, int, int], Awaitable[None]]]
@@ -74,6 +86,10 @@ async def _check_single_proxy(
             if not isinstance(payload, dict) or "responseType" not in payload:
                 return failed("unexpected JSON schema")
             return True
+    except aiohttp.ConnectionTimeoutError:
+        return failed("connection timeout")
+    except aiohttp.SocketTimeoutError:
+        return failed("read timeout")
     except asyncio.TimeoutError:
         return failed("timeout")
     except aiohttp.ClientHttpProxyError as exc:
@@ -110,12 +126,30 @@ async def filter_working_proxies(
     lock = asyncio.Lock()
     checked = 0
     total = len(proxies)
+    attempts = int(os.getenv("PROXY_CHECK_ATTEMPTS", "2"))
+    if attempts < 1 or attempts > 5:
+        raise ValueError("PROXY_CHECK_ATTEMPTS must be between 1 and 5")
 
     async def check_one(proxy: ProxyConfig) -> None:
         nonlocal checked
-        ok = await _check_single_proxy(
-            session, proxy, test_user, timeout, failure_counts=failure_counts
-        )
+        for attempt in range(attempts):
+            reasons: Counter[str] = Counter()
+            ok = await _check_single_proxy(
+                session, proxy, test_user, timeout, failure_counts=reasons
+            )
+            if ok:
+                break
+            transient = set(reasons) & {
+                "timeout",
+                "connection timeout",
+                "read timeout",
+                "connection error",
+                "local proxy connection failed",
+            }
+            if not transient or attempt + 1 == attempts:
+                failure_counts.update(reasons)
+                break
+            await asyncio.sleep(0.25)
         async with lock:
             checked += 1
             if ok:

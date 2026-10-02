@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import ExitStack
 import os
+import math
 from pathlib import Path
 import socket
 from tempfile import TemporaryDirectory
@@ -38,9 +39,38 @@ class XrayProxyChecker:
                 proxy.assign_tags()
             write_xray_config(self.config_path, proxies)
         await self.runner.start_async()
+        await self._wait_for_ports(proxies)
         warmup = float(os.getenv("PROXY_CHECK_XRAY_WARMUP", "1.5"))
         if warmup > 0:
             await asyncio.sleep(warmup)
+
+    async def _wait_for_ports(self, proxies: list[ProxyConfig]) -> None:
+        timeout = float(os.getenv("PROXY_CHECK_START_TIMEOUT", "10"))
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("PROXY_CHECK_START_TIMEOUT must be positive and finite")
+        deadline = asyncio.get_running_loop().time() + timeout
+        pending = {proxy.local_http_port for proxy in proxies}
+
+        async def listening(port):
+            try:
+                _, writer = await asyncio.wait_for(
+                    asyncio.open_connection("127.0.0.1", port), 0.25
+                )
+            except (OSError, asyncio.TimeoutError):
+                return None
+            writer.close()
+            await writer.wait_closed()
+            return port
+
+        while pending:
+            if asyncio.get_running_loop().time() >= deadline:
+                raise asyncio.TimeoutError(
+                    f"Checker Xray did not open {len(pending)} local ports within {timeout:g}s"
+                )
+            results = await asyncio.gather(*(listening(port) for port in pending))
+            pending.difference_update(port for port in results if port is not None)
+            if pending:
+                await asyncio.sleep(0.05)
 
     async def stop(self) -> None:
         try:

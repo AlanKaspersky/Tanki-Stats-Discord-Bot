@@ -39,7 +39,9 @@ class ProxyConfig:
             for user in server["users"]:
                 user.pop("email", None)
                 user.pop("level", None)
-        raw = json.dumps(outbound, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        raw = json.dumps(
+            outbound, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
     @staticmethod

@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import math
+import os
 from typing import Awaitable, Callable, List, Optional
 from urllib.parse import urlsplit
 
@@ -32,15 +34,20 @@ def decode_subscription_body(body: str) -> str:
 
 async def fetch_subscription(url: str, session: aiohttp.ClientSession) -> str:
     """Fetch subscription content from URL."""
+    total = float(os.getenv("PROXY_SUBSCRIPTION_TIMEOUT", "30"))
+    if not math.isfinite(total) or total <= 0:
+        raise ValueError("PROXY_SUBSCRIPTION_TIMEOUT must be positive and finite")
     try:
         async with session.get(
             url,
-            timeout=aiohttp.ClientTimeout(total=30),
+            timeout=aiohttp.ClientTimeout(
+                total=total, connect=min(10, total), sock_read=total
+            ),
             headers={"User-Agent": "TankiRatingBot/1.0"},
         ) as response:
             response.raise_for_status()
             return await response.text()
-    except aiohttp.ClientError as exc:
+    except (aiohttp.ClientError, asyncio.TimeoutError, UnicodeError) as exc:
         logger.error(
             "Failed to fetch subscription from %s: %s",
             urlsplit(url).hostname,

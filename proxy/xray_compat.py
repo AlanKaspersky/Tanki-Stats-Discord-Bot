@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import base64
 from typing import List, Optional, Tuple
 
 from proxy.models import ProxyConfig
@@ -40,9 +41,6 @@ def normalize_network(network: str, security: str) -> str:
     """Привести type/network из URI к значению для xray streamSettings.network."""
     n = (network or "tcp").lower().strip()
     n = {"websocket": "ws", "splithttp": "xhttp", "tcp": "raw"}.get(n, n)
-    sec = (security or "reality").lower().strip()
-    if sec == "reality" and n == "tcp":
-        return "raw"
     return n
 
 
@@ -73,8 +71,25 @@ def xray_skip_reason(config: ProxyConfig) -> Optional[str]:
             )
         if not config.public_key:
             return "REALITY missing publicKey (pbk)"
-        if len(config.short_id) > 16 or len(config.short_id) % 2 or any(
-            char not in "0123456789abcdefABCDEF" for char in config.short_id
+        try:
+            if (
+                "=" in config.public_key
+                or len(
+                    base64.b64decode(
+                        config.public_key + "=" * (-len(config.public_key) % 4),
+                        altchars=b"-_",
+                        validate=True,
+                    )
+                )
+                != 32
+            ):
+                return "invalid REALITY publicKey"
+        except (ValueError, TypeError):
+            return "invalid REALITY publicKey"
+        if (
+            len(config.short_id) > 16
+            or len(config.short_id) % 2
+            or any(char not in "0123456789abcdefABCDEF" for char in config.short_id)
         ):
             return "invalid REALITY shortId"
 

@@ -239,6 +239,7 @@ class ProxyLifecycleTests(unittest.IsolatedAsyncioTestCase):
     async def test_checker_ports_and_config_are_independent(self):
         checker = XrayProxyChecker(Path("unused"), Path(self.tmp.name), {18001})
         checker.runner = Mock(start_async=AsyncMock(), stop_async=AsyncMock())
+        checker._wait_for_ports = AsyncMock()
         candidates = [make_proxy("a"), make_proxy("b")]
         try:
             with patch.dict("os.environ", {"PROXY_CHECK_XRAY_WARMUP": "0"}):

@@ -19,7 +19,7 @@ from proxy.pool import ProxyPool
 from proxy.sources_loader import load_sources_file
 from proxy.sources_rewrite import rewrite_sources_keep_working
 from proxy.subscription import fetch_all_subscriptions
-from proxy.vless_parser import extract_vless_lines, parse_vless_uri
+from proxy.subscription_import import import_subscription
 from proxy.xray_config import write_xray_config
 from proxy.xray_runner import XrayRunner
 
@@ -158,35 +158,32 @@ class ProxyBootstrap:
     def _parse_source_content(
         self, vless_uris: List[str], subscription_content: List[str]
     ) -> List[ProxyConfig]:
-        all_vless_lines = list(vless_uris)
-        for content in subscription_content:
-            all_vless_lines.extend(extract_vless_lines(content))
-
         seen_ids: set[str] = set()
         proxies: List[ProxyConfig] = []
-        skipped = 0
         failure_counts: Counter[str] = Counter()
-
-        for line in all_vless_lines:
-            config = parse_vless_uri(
-                line, local_http_port=0, failure_counts=failure_counts
-            )
-            if config is None:
-                skipped += 1
-                continue
-            if config.id in seen_ids:
-                continue
-            seen_ids.add(config.id)
-            proxies.append(config)
-
-            if self.max_proxies > 0 and len(proxies) >= self.max_proxies:
+        counts: Counter[str] = Counter()
+        capped = False
+        for content in ["\n".join(vless_uris), *subscription_content]:
+            for config in import_subscription(content, failure_counts, counts):
+                if config.id in seen_ids:
+                    counts["duplicates"] += 1
+                    continue
+                seen_ids.add(config.id)
+                proxies.append(config)
+                if self.max_proxies > 0 and len(proxies) >= self.max_proxies:
+                    capped = True
+                    break
+            if capped:
                 break
 
         logger.info(
-            "Parsed %d xray-compatible proxies from %d vless URIs (%d skipped)",
+            "Parsed %d unique xray-compatible proxies from %d inspected entries "
+            "(%d duplicates, %d rejected; candidate limit reached: %s)",
             len(proxies),
-            len(all_vless_lines),
-            skipped,
+            counts["entries"],
+            counts["duplicates"],
+            sum(failure_counts.values()),
+            capped,
         )
         if failure_counts:
             logger.warning(
@@ -445,7 +442,11 @@ class ProxyBootstrap:
             raise RuntimeError(f"No proxies parsed from {self.sources_path}")
 
         if working_target > 0:
-            previous_ids = {proxy.id for proxy in self._proxies}
+            previous_ids = {
+                identity
+                for proxy in self._proxies
+                for identity in (proxy.id, proxy.connection_id())
+            }
             known = [proxy for proxy in candidates if proxy.id in previous_ids]
             others = [proxy for proxy in candidates if proxy.id not in previous_ids]
             random.shuffle(others)

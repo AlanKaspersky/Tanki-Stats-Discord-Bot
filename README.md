@@ -251,7 +251,12 @@ Account-level retries, proxy-level attempts, timeouts, and emergency recovery al
 | `PROXY_RATE_LIMIT_COOLDOWN` | `60` | General failing-connection cooldown, in seconds |
 | `PROXY_429_COOLDOWN` | `2` | Separate cooldown for a proxy receiving HTTP 429, in seconds |
 | `PROXY_CHECK_WORKERS` | `25` | Concurrent profile probes during proxy filtering |
-| `PROXY_CHECK_TIMEOUT` | `15` | Health-check request timeout, in seconds |
+| `PROXY_CHECK_TIMEOUT` | `20` | Total timeout for each health-check HTTP attempt, in seconds |
+| `PROXY_CHECK_CONNECT_TIMEOUT` | `10` | Connection timeout, capped by the total health-check timeout |
+| `PROXY_CHECK_READ_TIMEOUT` | `15` | Socket-read timeout, capped by the total health-check timeout |
+| `PROXY_CHECK_ATTEMPTS` | `2` | Attempts per route for temporary timeouts or connection failures; range 1-5 |
+| `PROXY_CHECK_START_TIMEOUT` | `10` | Deadline for the checker Xray to open its local ports |
+| `PROXY_SUBSCRIPTION_TIMEOUT` | `30` | Total timeout per subscription download; a timed-out source does not abort the remaining downloads |
 | `PROXY_CHECK_XRAY_WARMUP` | `1.5` | Warmup after starting a health-check Xray configuration, in seconds |
 | `PROXY_CHECK_BATCH_SIZE` | `400` | Number of configurations checked in an Xray batch |
 | `PROXY_CHECK_INTERVAL_HOURS` | `6` | Automatic refresh interval in hours; must be positive and finite; applied on restart |
@@ -551,15 +556,19 @@ https://subscription.example.invalid/YOUR_PRIVATE_SUBSCRIPTION
 
 The example subscription is deliberately nonfunctional. Use your provider's actual address privately. A fabricated URI with missing REALITY keys is not a useful connectivity test.
 
-Subscription responses can contain plain VLESS lines or Base64-encoded content. The loader parses the returned lines, combines them with raw sources, and produces normalized proxy records. Subscription requests use their own timeout and application user agent.
+Subscription responses can contain plain VLESS lines, Xray JSON profiles, arrays of profiles or VLESS URI strings, or Base64-encoded versions of those formats. JSON imports support VLESS outbounds inside `outbounds`, standalone VLESS outbounds, and profiles wrapped in `configs`. Other JSON formats are reported as unsupported. The loader combines these entries with raw sources and produces normalized proxy records. Subscription requests use their own timeout and application user agent.
+
+JSON import retains stream settings, user encryption, transport parameters, and outbound options such as mux. Each server/user combination becomes a separate candidate. Outbounds that require another outbound through `proxySettings` or `sockopt.dialerProxy`, and VLESS reverse outbounds, are rejected with a reason instead of being flattened into an incomplete standalone route. Profile-wide inbounds, DNS, routing rules, and chained outbounds are not imported into the bot's generated runtime. A malformed neighboring profile or entry does not discard valid entries.
 
 Base64 decoding validates the encoded input and UTF-8 output; other plain text is preserved instead of being partially decoded. Some public lists already contain placeholders such as `[emailprotected]` in place of a VLESS user ID and server address. These entries cannot be reconstructed from the placeholder and are skipped. Valid neighboring entries remain available. Download summaries identify the affected subscription by its position in the URL list and hostname, without printing its full URL.
 
 ### Parsing and Compatibility
 
-The source parser extracts addresses, ports, UUIDs, names, security, transport, and relevant TLS or REALITY parameters. A compatibility filter removes configurations that the current generator cannot use.
+The source parser retains addresses, ports, decoded user IDs, security, transport, and relevant TLS or REALITY parameters. WebSocket and HTTPUpgrade paths and hosts, gRPC service names and authorities, XHTTP paths/modes/extra settings, RAW HTTP headers, TLS ALPN, and REALITY spider paths are carried into the generated outbound. Explicit URI `allowInsecure` values are preserved; the parser does not enable that option implicitly. A compatibility filter removes configurations that the current generator cannot use.
 
-The filter accepts `reality` and `tls` security. For REALITY, it accepts `tcp`, `raw`, `xhttp`, and `grpc`, normalizing `tcp` to `raw`. REALITY configurations require a public key and short ID.
+The filter accepts `reality`, `tls`, and `none` security. An omitted URI security setting means `none`. Supported transports are RAW/TCP, WebSocket, gRPC, XHTTP/SplitHTTP, and HTTPUpgrade. Aliases are normalized before generation. For REALITY, only RAW, XHTTP, and gRPC are accepted. REALITY requires a public key; its short ID may be empty, matching Xray 26.3.27, or contain up to 16 hexadecimal characters with even length. Xray configuration validation and the API probe still determine whether an accepted candidate actually works.
+
+Deduplication hashes the generated connection configuration instead of only the user ID, server address, and port. Routes with different SNI, transport paths, service names, REALITY keys/short IDs, encryption, or other effective settings remain separate candidates. Labels, local listening ports, and JSON tags do not affect identity. Logs distinguish exact duplicates from rejected entries and show when `MAX_PROXIES` stops parsing. Existing cache records remain readable; successful refreshes replace them with records containing the new transport fields and connection identities. Lost parameters in a legacy cache can only be restored by downloading the source again.
 
 The supported VLESS flow values are empty, `xtls-rprx-vision`, and `xtls-rprx-vision-udp443`. Older values such as `xtls-rprx-origin` are rejected before Xray starts, including when loading an existing cache. The filter does not change an unsupported flow into another protocol setting.
 
@@ -606,6 +615,8 @@ If the sources contain fewer working routes than the target, all candidates are 
 If a batch fails Xray configuration validation, the checker splits it to isolate problematic configurations. This allows a single malformed entry to be rejected without automatically discarding every other proxy in that batch.
 
 HTTP 429 demonstrates that the request reached the upstream API and is accepted as evidence of connectivity during filtering. It does not mean the proxy can provide unlimited successful profile requests during normal collection.
+
+Before probing, the checker waits for all of its assigned local ports to listen, within `PROXY_CHECK_START_TIMEOUT`, then applies the configured warmup. Connection and read timeouts are bounded by the per-attempt total. Temporary connection failures and timeouts can retry up to `PROXY_CHECK_ATTEMPTS`; permanent HTTP failures do not retry. A route is counted once regardless of attempts. Increasing these limits increases the duration of a full scan.
 
 Failed batches also log an aggregate reason summary at warning level: HTTP status counts, timeouts, connection failures, invalid JSON, or an unexpected JSON schema. This helps distinguish an unreachable route from an API response that the checker cannot accept. A successful Xray process start alone does not establish working API access.
 
@@ -930,6 +941,7 @@ Tanki Stats/
 │   ├── sources_loader.py          # Raw source-file parsing
 │   ├── sources_rewrite.py         # Preserve/filter source entries
 │   ├── subscription.py            # Subscription fetching and decoding
+│   ├── subscription_import.py     # VLESS URI and Xray JSON subscription import
 │   ├── vless_parser.py            # URI parsing
 │   ├── xray_compat.py             # Compatibility rules
 │   ├── xray_config.py             # Runtime configuration generation
@@ -1217,8 +1229,9 @@ Here `python` means the selected virtual environment's interpreter. On Windows i
 | `test_proxy_sources.py` | Masked source entries, aggregate diagnostics, credential-safe parser logs, valid IPv6 addresses, and plain/Base64 subscription decoding |
 | `test_proxy_startup.py` | Cached startup without downloads, missing and oversized caches, background pool creation, and cache preservation after a failed refresh |
 | `test_proxy_progress.py` | Visible queue and subscription stages, initial probe counter, responsive parsing, and updates to the same Discord message |
+| `test_proxy_import.py` | Connection-aware deduplication, transport settings, Xray JSON import, cache round trips, bounded retries/timeouts, and listener readiness |
 
-The most recent local verification passed 98 unit tests on Python 3.12. Ruff checks and dependency consistency checks also passed during the implementation verification.
+The most recent local verification passed 118 unit tests on Python 3.12. Ruff checks and dependency consistency checks also passed during the implementation verification. A separate integration check validated seven generated configurations with Xray 26.3.27 and reached a local profile API through real VLESS WebSocket, gRPC, and HTTPUpgrade routes, including a JSON-imported route.
 
 Synthetic fixtures compare the refactored reports, views, and widget payload with the original behavior. They are test data rather than exported production snapshots.
 
