@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
@@ -24,6 +26,21 @@ class ProxyConfig:
     local_http_port: int = 0
     inbound_tag: str = field(default="", repr=False)
     outbound_tag: str = field(default="", repr=False)
+    stream_settings: Dict[str, Any] = field(default_factory=dict)
+    user_settings: Dict[str, Any] = field(default_factory=dict)
+    outbound_options: Dict[str, Any] = field(default_factory=dict)
+
+    def connection_id(self) -> str:
+        from proxy.xray_config import _build_outbound
+
+        outbound = _build_outbound(self)
+        outbound.pop("tag", None)
+        for server in outbound["settings"]["vnext"]:
+            for user in server["users"]:
+                user.pop("email", None)
+                user.pop("level", None)
+        raw = json.dumps(outbound, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
     @staticmethod
     def make_id(uuid: str, address: str, port: int) -> str:
@@ -48,6 +65,9 @@ class ProxyConfig:
             "public_key": self.public_key,
             "short_id": self.short_id,
             "local_http_port": self.local_http_port,
+            "stream_settings": deepcopy(self.stream_settings),
+            "user_settings": deepcopy(self.user_settings),
+            "outbound_options": deepcopy(self.outbound_options),
         }
 
     @classmethod
@@ -69,6 +89,9 @@ class ProxyConfig:
             local_http_port=int(data.get("local_http_port", 0)),
             inbound_tag=f"http-in-{proxy_id}",
             outbound_tag=f"vless-out-{proxy_id}",
+            stream_settings=deepcopy(data.get("stream_settings", {})),
+            user_settings=deepcopy(data.get("user_settings", {})),
+            outbound_options=deepcopy(data.get("outbound_options", {})),
         )
 
     def assign_tags(self) -> None:

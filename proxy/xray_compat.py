@@ -8,7 +8,8 @@ from proxy.models import ProxyConfig
 logger = logging.getLogger(__name__)
 
 REALITY_NETWORKS = frozenset({"tcp", "raw", "xhttp", "grpc"})
-SUPPORTED_SECURITY = frozenset({"reality", "tls"})
+SUPPORTED_SECURITY = frozenset({"reality", "tls", "none"})
+SUPPORTED_NETWORKS = frozenset({"raw", "tcp", "ws", "grpc", "xhttp", "httpupgrade"})
 SUPPORTED_FLOWS = frozenset({"", "xtls-rprx-vision", "xtls-rprx-vision-udp443"})
 
 
@@ -38,6 +39,7 @@ def valid_xray_user_id(value: str) -> bool:
 def normalize_network(network: str, security: str) -> str:
     """Привести type/network из URI к значению для xray streamSettings.network."""
     n = (network or "tcp").lower().strip()
+    n = {"websocket": "ws", "splithttp": "xhttp", "tcp": "raw"}.get(n, n)
     sec = (security or "reality").lower().strip()
     if sec == "reality" and n == "tcp":
         return "raw"
@@ -50,7 +52,12 @@ def xray_skip_reason(config: ProxyConfig) -> Optional[str]:
     network_uri = (config.network or "tcp").lower().strip()
 
     if security not in SUPPORTED_SECURITY:
-        return f"unsupported security={security!r} (need reality or tls)"
+        return f"unsupported security={security!r}"
+    network_uri = normalize_network(network_uri, security)
+    if network_uri not in SUPPORTED_NETWORKS:
+        return f"unsupported network={network_uri!r}"
+    if not config.address or not 1 <= config.port <= 65535:
+        return "invalid server address or port"
 
     if not valid_xray_user_id(config.uuid):
         return "invalid VLESS user ID for Xray"
@@ -66,8 +73,10 @@ def xray_skip_reason(config: ProxyConfig) -> Optional[str]:
             )
         if not config.public_key:
             return "REALITY missing publicKey (pbk)"
-        if not config.short_id:
-            return "REALITY missing shortId (sid)"
+        if len(config.short_id) > 16 or len(config.short_id) % 2 or any(
+            char not in "0123456789abcdefABCDEF" for char in config.short_id
+        ):
+            return "invalid REALITY shortId"
 
     return None
 

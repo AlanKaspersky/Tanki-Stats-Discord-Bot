@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -11,34 +12,38 @@ logger = logging.getLogger(__name__)
 
 
 def _build_outbound(proxy: ProxyConfig) -> Dict[str, Any]:
-    stream_settings: Dict[str, Any] = {
-        "network": normalize_network(proxy.network, proxy.security),
-    }
+    stream_settings = deepcopy(proxy.stream_settings)
+    stream_settings["network"] = normalize_network(proxy.network, proxy.security)
+    stream_settings["security"] = proxy.security
 
     if proxy.security == "reality":
         stream_settings["security"] = "reality"
-        stream_settings["realitySettings"] = {
+        settings = stream_settings.setdefault("realitySettings", {})
+        settings.pop("password", None)
+        settings.update({
             "serverName": proxy.sni,
             "fingerprint": proxy.fp,
             "publicKey": proxy.public_key,
             "shortId": proxy.short_id,
             "show": False,
-        }
+        })
     elif proxy.security == "tls":
         stream_settings["security"] = "tls"
-        stream_settings["tlsSettings"] = {
+        stream_settings.setdefault("tlsSettings", {}).update({
             "serverName": proxy.sni or proxy.address,
             "fingerprint": proxy.fp,
-        }
+        })
 
-    user: Dict[str, Any] = {
-        "id": proxy.uuid,
-        "encryption": "none",
-    }
+    user = deepcopy(proxy.user_settings)
+    user["id"] = proxy.uuid
+    user.setdefault("encryption", "none")
     if proxy.flow:
         user["flow"] = proxy.flow
+    else:
+        user.pop("flow", None)
 
     outbound: Dict[str, Any] = {
+        **deepcopy(proxy.outbound_options),
         "tag": proxy.outbound_tag,
         "protocol": "vless",
         "settings": {
