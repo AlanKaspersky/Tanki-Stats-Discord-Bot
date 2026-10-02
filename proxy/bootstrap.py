@@ -9,6 +9,7 @@ from typing import Awaitable, Callable, List, Optional
 
 import aiohttp
 
+from proxy.checker import XrayProxyChecker
 from proxy.config_store import load_proxies_json, save_proxies_json
 from proxy.health_check import ProxyFilterReport, filter_working_proxies
 from proxy.models import ProxyConfig
@@ -53,6 +54,10 @@ class ProxyBootstrap:
         self._runner: Optional[XrayRunner] = None
         self._proxies: List[ProxyConfig] = []
         self._pool_listeners: List[Callable[[Optional[ProxyPool]], None]] = []
+        self._check_lock = asyncio.Lock()
+        self._check_task: Optional[asyncio.Task] = None
+        self._checker: Optional[XrayProxyChecker] = None
+        self._stopping = False
 
     def on_pool_replaced(self, listener: Callable[[Optional[ProxyPool]], None]) -> None:
         """Вызывается при каждом новом ProxyPool (например после /proxycheck)."""
@@ -71,6 +76,7 @@ class ProxyBootstrap:
 
     async def start(self, session: Optional[aiohttp.ClientSession] = None) -> None:
         """Load proxies and start xray if enabled."""
+        self._stopping = False
         if not self.enabled:
             logger.info("XRAY_ENABLED=false, proxy pool disabled")
             return
@@ -85,6 +91,7 @@ class ProxyBootstrap:
                 f"No proxies loaded. Add vless links or subscriptions to {self.sources_path}"
             )
 
+        self._prepare_proxy_ports(self._proxies)
         write_xray_config(self.xray_config_path, self._proxies)
 
         binary = XrayRunner.resolve_binary(
@@ -169,6 +176,10 @@ class ProxyBootstrap:
         logger.info("Refreshed %d proxies from sources", len(proxies))
 
     def _prepare_proxy_ports(self, proxies: List[ProxyConfig]) -> None:
+        if self.base_port < 1 or self.base_port + len(proxies) - 1 > 65535:
+            raise RuntimeError(
+                "PROXY_BASE_PORT and proxy count exceed the TCP port range"
+            )
         for index, proxy in enumerate(proxies):
             proxy.local_http_port = self.base_port + index
             proxy.assign_tags()
@@ -224,7 +235,7 @@ class ProxyBootstrap:
             return ProxyFilterReport(0, 0, 0, [], [])
 
         try:
-            await self._restart_xray_with_proxies(proxies)
+            await self._checker.restart(proxies)
         except RuntimeError as exc:
             if len(proxies) <= 1:
                 bad_id = proxies[0].id
@@ -235,6 +246,10 @@ class ProxyBootstrap:
                 )
                 return ProxyFilterReport(1, 0, 1, [], [bad_id])
 
+            logger.warning(
+                "Xray rejected a batch of %d proxy configs; checking two smaller groups",
+                len(proxies),
+            )
             mid = len(proxies) // 2
             left = await self._health_check_proxies_resilient(
                 proxies[:mid],
@@ -286,31 +301,60 @@ class ProxyBootstrap:
         *,
         progress_callback: ProgressCallback = None,
         rewrite_sources: bool = True,
+        replacement_lock: Optional[asyncio.Lock] = None,
     ) -> ProxyFilterReport:
-        """Restore the previous configuration if a candidate check/restart fails."""
+        """Scan independently; acquire the serving lock only to publish a new pool."""
+        async with self._check_lock:
+            if self._stopping:
+                raise RuntimeError("Proxy bootstrap is stopping")
+            self._check_task = asyncio.current_task()
+            try:
+                return await self._filter_working_proxies_from_sources(
+                    session,
+                    progress_callback=progress_callback,
+                    rewrite_sources=rewrite_sources,
+                    replacement_lock=replacement_lock,
+                )
+            except Exception:
+                logger.exception("Проверка прокси не завершена")
+                raise
+            finally:
+                try:
+                    await self._stop_checker()
+                finally:
+                    self._check_task = None
+
+    async def _stop_checker(self) -> None:
+        if self._checker is not None:
+            checker, self._checker = self._checker, None
+            await checker.stop()
+
+    async def _publish_working_proxies(self, working: List[ProxyConfig]) -> None:
         previous = deepcopy(self._proxies)
+        previous_pool = self.pool
         try:
-            return await self._filter_working_proxies_from_sources(
-                session,
-                progress_callback=progress_callback,
-                rewrite_sources=rewrite_sources,
-            )
-        except asyncio.CancelledError:
-            await self.stop()
-            raise
-        except Exception:
-            logger.exception(
-                "Проверка прокси не завершена; восстанавливаю предыдущую конфигурацию"
-            )
+            await self._restart_xray_with_proxies(working)
+            self._apply_working_proxies(working)
+        except (Exception, asyncio.CancelledError):
+            logger.exception("Не удалось переключить Xray; восстанавливаю рабочий пул")
             try:
                 if previous:
                     await self._restart_xray_with_proxies(previous)
-                    self._apply_working_proxies(previous)
+                    save_proxies_json(self.proxies_json_path, previous)
+                    self._proxies = previous
+                    self.pool = previous_pool
                 else:
-                    await self.stop()
+                    if self._runner is not None:
+                        await self._runner.stop_async()
+                        self._runner = None
+                    self.pool = None
             except Exception:
                 logger.exception("Не удалось восстановить прежнюю конфигурацию Xray")
-                await self.stop()
+                if self._runner is not None:
+                    await self._runner.stop_async()
+                    self._runner = None
+                self.pool = None
+                self._notify_pool_replaced()
             raise
 
     async def _filter_working_proxies_from_sources(
@@ -319,14 +363,25 @@ class ProxyBootstrap:
         *,
         progress_callback: ProgressCallback = None,
         rewrite_sources: bool = True,
+        replacement_lock: Optional[asyncio.Lock] = None,
     ) -> ProxyFilterReport:
         """Check all proxies from sources; save only working ones to proxies.json."""
         if not self.enabled:
             raise RuntimeError("XRAY_ENABLED=false, proxy check unavailable")
 
-        candidates = await self.parse_proxies_from_sources(session)
+        candidates = deepcopy(await self.parse_proxies_from_sources(session))
         if not candidates:
             raise RuntimeError(f"No proxies parsed from {self.sources_path}")
+
+        binary = XrayRunner.resolve_binary(self.base_dir, os.getenv("XRAY_BINARY_PATH"))
+        self._checker = XrayProxyChecker(
+            binary,
+            self.xray_config_path.parent,
+            {proxy.local_http_port for proxy in self._proxies},
+        )
+        logger.info(
+            "Проверка прокси запущена в отдельном Xray; рабочий пул остаётся доступен"
+        )
 
         batch_size = int(os.getenv("PROXY_CHECK_BATCH_SIZE", "400"))
         batch_size = max(1, batch_size)
@@ -382,8 +437,9 @@ class ProxyBootstrap:
                 f"No working proxies found ({report.failed} failed of {report.total})"
             )
 
-        await self._restart_xray_with_proxies(working)
-        self._apply_working_proxies(working)
+        await self._stop_checker()
+        async with replacement_lock or asyncio.Lock():
+            await self._publish_working_proxies(deepcopy(working))
 
         if rewrite_sources:
             rewrite_sources_keep_working(
@@ -401,6 +457,12 @@ class ProxyBootstrap:
 
     async def stop(self) -> None:
         """Stop xray subprocess."""
+        self._stopping = True
+        task = self._check_task
+        if task is not None and task is not asyncio.current_task():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        await self._stop_checker()
         if self._runner is not None:
             await self._runner.stop_async()
             self._runner = None

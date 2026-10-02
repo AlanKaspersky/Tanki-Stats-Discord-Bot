@@ -9,6 +9,30 @@ logger = logging.getLogger(__name__)
 
 REALITY_NETWORKS = frozenset({"tcp", "raw", "xhttp", "grpc"})
 SUPPORTED_SECURITY = frozenset({"reality", "tls"})
+SUPPORTED_FLOWS = frozenset({"", "xtls-rprx-vision", "xtls-rprx-vision-udp443"})
+
+
+def valid_xray_user_id(value: str) -> bool:
+    """Match Xray 26.x UUID parsing, including custom IDs up to 30 UTF-8 bytes."""
+    if not isinstance(value, str):
+        return False
+    try:
+        text = value.encode("utf-8")
+    except UnicodeError:
+        return False
+    length = len(text)
+    if length < 32 or length > 36:
+        return 0 < length <= 30
+    for group_size in (8, 4, 4, 4, 12):
+        if text.startswith(b"-"):
+            text = text[1:]
+        group = text[:group_size]
+        if len(group) != group_size or any(
+            char not in b"0123456789abcdefABCDEF" for char in group
+        ):
+            return False
+        text = text[group_size:]
+    return True
 
 
 def normalize_network(network: str, security: str) -> str:
@@ -27,6 +51,12 @@ def xray_skip_reason(config: ProxyConfig) -> Optional[str]:
 
     if security not in SUPPORTED_SECURITY:
         return f"unsupported security={security!r} (need reality or tls)"
+
+    if not valid_xray_user_id(config.uuid):
+        return "invalid VLESS user ID for Xray"
+
+    if (config.flow or "") not in SUPPORTED_FLOWS:
+        return f"unsupported VLESS flow={config.flow!r}"
 
     if security == "reality":
         if network_uri not in REALITY_NETWORKS:

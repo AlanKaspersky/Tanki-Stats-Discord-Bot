@@ -558,6 +558,10 @@ The source parser extracts addresses, ports, UUIDs, names, security, transport, 
 
 The filter accepts `reality` and `tls` security. For REALITY, it accepts `tcp`, `raw`, `xhttp`, and `grpc`, normalizing `tcp` to `raw`. REALITY configurations require a public key and short ID.
 
+The supported VLESS flow values are empty, `xtls-rprx-vision`, and `xtls-rprx-vision-udp443`. Older values such as `xtls-rprx-origin` are rejected before Xray starts, including when loading an existing cache. The filter does not change an unsupported flow into another protocol setting.
+
+User IDs are also validated before startup and cache loading. Validation follows the [Xray 26.3.27 UUID parser](https://github.com/XTLS/Xray-core/blob/v26.3.27/common/uuid/uuid.go): recognized UUID forms and nonempty custom IDs of at most 30 UTF-8 bytes remain supported. Malformed longer IDs are rejected, rather than allowing one invalid entry to trigger repeated batch splitting. IDs are not rewritten or guessed.
+
 This filter describes the current implementation's accepted configurations. It is not a promise that every VLESS URI, every transport extension, or every Xray version is supported. A URI can parse successfully and still fail Xray configuration validation or an actual network probe.
 
 ### Generated Files and Local Ports
@@ -567,9 +571,10 @@ This filter describes the current implementation's accepted configurations. It i
 | `proxies_sources.txt` | Private source list maintained by the operator |
 | `proxies.json` | Normalized and filtered proxy records |
 | `xray_config.runtime.json` | Generated inbounds, outbounds, and routing configuration |
+| `.xray-check-*/config.json` | Private temporary configuration for the independent checker; removed after each check |
 | `xray` or `xray.exe` | Platform-specific executable managed by the runner |
 
-Local inbound ports are assigned consecutively from `PROXY_BASE_PORT`. They bind to `127.0.0.1`, so external clients do not need access to those ports. Do not expose them publicly as part of installing the bot.
+Serving inbound ports are assigned consecutively from `PROXY_BASE_PORT`, including when loading a cache. The checker requests separate available ports from the operating system and excludes the serving ports. Both processes bind to `127.0.0.1`, so external clients do not need access to those ports. Do not expose them publicly as part of installing the bot. No separate checker port setting is required.
 
 The cache and generated Xray configuration can contain UUIDs and other private connection material. They are runtime files, not suitable public example configuration.
 
@@ -583,13 +588,19 @@ When every proxy is in cooldown, the client can report pool exhaustion instead o
 
 ### Health Checks
 
-Health checks start Xray configurations in batches and request a test profile through the corresponding local ports. The test nickname and API URL are configurable.
+Health checks start configurations in batches in a separate Xray process and request a test profile through its local ports. The test nickname and API URL are configurable. During parsing, subscription downloads, probes, and batch splitting, commands and scheduled collection continue using the serving Xray and current pool. Candidate port assignments do not modify the serving records.
 
 If a batch fails Xray configuration validation, the checker splits it to isolate problematic configurations. This allows a single malformed entry to be rejected without automatically discarding every other proxy in that batch.
 
 HTTP 429 demonstrates that the request reached the upstream API and is accepted as evidence of connectivity during filtering. It does not mean the proxy can provide unlimited successful profile requests during normal collection.
 
-Filtering rebuilds the working pool and generated configuration. On failed refresh paths, the implementation attempts to restore the prior configuration. Cancellation and shutdown stop the managed Xray process.
+Failed batches also log an aggregate reason summary at warning level: HTTP status counts, timeouts, connection failures, invalid JSON, or an unexpected JSON schema. This helps distinguish an unreachable route from an API response that the checker cannot accept. A successful Xray process start alone does not establish working API access.
+
+Checks are serialized with a maintenance lock. After a successful scan, the checker stops and removes its temporary configuration. Only then does the bot acquire the pool-recovery lock, wait for ongoing profile requests or a collection round, restart the serving Xray, and publish the filtered pool. Requests can briefly wait during this final restart; they no longer wait for the entire source scan.
+
+A failed or cancelled scan leaves the serving runtime and pool in place. If the final serving restart fails or is cancelled, the bot attempts to restore the previous runtime before releasing the replacement lock. Shutdown cancels an active check and stops both managed processes. Hard process termination can leave a temporary checker directory; treat it as private credential material.
+
+An independent check does not make an exhausted or unreachable serving pool healthy. If collection requires emergency recovery, it can still wait for usable routes. Direct access remains the existing fallback when no pool exists; `XRAY_ENABLED=true` does not enforce proxy-only access.
 
 ### Automatic Checks and Emergency Recovery
 
@@ -631,7 +642,7 @@ The daily task uses a UTC time definition. On a Moscow host this corresponds to 
 8. Recover the proxy pool within the configured limit when the collection requires it.
 9. Finish with processed and failed account counts.
 
-The collection lock serializes scheduled and forced collection. A separate pool-recovery lock coordinates collection rounds with proxy filtering. Per-account locks protect report persistence and flushing within the running process.
+The collection lock serializes scheduled and forced collection. A separate pool-recovery lock coordinates collection rounds and individual profile requests with the final serving-pool replacement. The full candidate scan runs outside that lock. Per-account locks protect report persistence and flushing within the running process.
 
 ### Durable Outbox
 
@@ -852,7 +863,7 @@ Keep authorization, account selection, and remote publication distinct when exte
 
 **Source:** [proxy_tasks.py](commands/stats_features/proxy_tasks.py)
 
-The module coordinates the feature layer with `ProxyBootstrap`. It uses the shared recovery lock so a collection round and proxy replacement do not independently change the active runtime at the same time.
+The module coordinates the feature layer with `ProxyBootstrap`. Automatic and emergency scans use an independent checker. They pass the shared recovery lock to the final pool replacement so it cannot restart the serving runtime during a collection round or profile request.
 
 Automatic filtering preserves original source lines. Manual destructive filtering remains an explicit administrator command rather than an incidental effect of every scheduled check.
 
@@ -896,6 +907,7 @@ Tanki Stats/
 │   ├── bootstrap.py               # Source loading and runtime orchestration
 │   ├── config_store.py            # Normalized proxy cache
 │   ├── health_check.py            # Batched proxy probes
+│   ├── checker.py                 # Independent temporary Xray runtime and ports
 │   ├── models.py                  # Proxy records
 │   ├── pool.py                    # Selection, task bindings, cooldowns
 │   ├── sources_loader.py          # Raw source-file parsing
@@ -969,7 +981,8 @@ Persist recipient ack        Keep pending recipient
 |-------------------|----------|
 | Registration lock | Concurrent account-add validation and registration |
 | Collection lock | Daily and forced collection runs |
-| Pool recovery lock | Collection rounds versus pool filtering/replacement |
+| Pool recovery lock | Collection rounds and profile requests versus final serving-pool replacement |
+| Proxy check lock | Concurrent automatic, manual, and emergency scans |
 | Per-account lock | Baseline/outbox update and report flushing |
 | Per-user token lock | OAuth refresh state for one Discord user |
 | Atomic file replacement | Individual JSON/text persistence |
@@ -998,6 +1011,7 @@ Transfer the application source and assets, then prepare the host-specific runti
 | `proxies_sources.txt` | Configure privately when using proxies | Preserve unless intentionally changing sources |
 | `proxies.json` | Optional compatible cache | Preserve or regenerate according to the startup setting |
 | `xray_config.runtime.json` | Generated by the application | Allow the application to regenerate it |
+| `.xray-check-*/` | Not needed | Temporary private checker state; never publish or copy into a deployment |
 | Linux `xray` executable | Install a compatible build | Keep or deliberately update the compatible build |
 | Windows `xray.exe` | Not used on Linux | Not needed |
 | Windows `.venv/` | Do not transfer; recreate | Maintain a Linux virtual environment |
@@ -1180,9 +1194,10 @@ Here `python` means the selected virtual environment's interpreter. On Windows i
 | `test_delivery.py` | Persistent outbox, partial delivery, retries, acknowledgement failures |
 | `test_collector.py` | Parallel collection, retries, exhaustion, cancellation, failure accounting |
 | `test_client.py` | Profile API responses, timeouts, proxy failures, rate-limit behavior |
-| `test_proxy_lifecycle.py` | Runner and bootstrap lifecycle, validation, cancellation, rollback-related paths |
+| `test_proxy_lifecycle.py` | Parallel registration and daily delivery during scanning, independent ports/configs, serialized checks, cancellation, shutdown, and replacement rollback |
+| `test_proxy_health.py` | Health-check failure summaries, accepted responses, unsupported VLESS flows, and invalid user IDs |
 
-The most recent local verification before this documentation update passed 51 unit tests on Python 3.12. Ruff checks and dependency consistency checks also passed during the implementation verification.
+The most recent local verification passed 70 unit tests on Python 3.12. Ruff checks and dependency consistency checks also passed during the implementation verification.
 
 Synthetic fixtures compare the refactored reports, views, and widget payload with the original behavior. They are test data rather than exported production snapshots.
 
@@ -1190,7 +1205,7 @@ Synthetic fixtures compare the refactored reports, views, and widget payload wit
 
 The unit tests use mocked API and Discord operations and temporary storage. They do not log in the production bot, contact real subscribers, or launch a daily reporting run against live account files.
 
-Proxy lifecycle tests exercise controlled failure and cancellation behavior. Separate local Windows checks validated the installed Xray executable, generated configuration, and sampled loopback listeners. Those checks do not establish that every remote proxy will remain reachable.
+Proxy lifecycle tests exercise controlled failure and cancellation behavior. A separate local Windows check ran two real Xray processes: the serving process handled 132 successful requests to a synthetic local API during two checker starts, keeping its PID and configuration. Both processes stopped and the temporary checker configuration was removed. Those checks do not establish Linux production behavior or remote proxy availability.
 
 ### Continuous Integration
 

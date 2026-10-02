@@ -50,12 +50,12 @@ class AdminCommandsMixin:
             close_session = True
 
         try:
-            async with self._pool_recovery_lock:
-                report = await self.proxy_bootstrap.filter_working_proxies_from_sources(
-                    session,
-                    progress_callback=progress,
-                    rewrite_sources=True,
-                )
+            report = await self.proxy_bootstrap.filter_working_proxies_from_sources(
+                session,
+                progress_callback=progress,
+                rewrite_sources=True,
+                replacement_lock=self._pool_recovery_lock,
+            )
             await status_msg.edit(
                 content=(
                     f"✅ Проверка завершена: **{report.working}/{report.total}** рабочих, "

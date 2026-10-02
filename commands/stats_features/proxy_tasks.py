@@ -23,21 +23,15 @@ class ProxyTasksMixin:
 
                 self.proxy_bootstrap = ProxyBootstrap(base_dir=self.base_dir)
 
-            if not self.proxy_bootstrap.pool:
-                logger.warning("⚠️ Пул прокси пуст. Запускаю базовый запуск .start()...")
-                async with self._pool_recovery_lock:
-                    await self.proxy_bootstrap.start()
-
             logger.info(
                 "📡 Запускаю фильтрацию и проверку связи с API для всех прокси..."
             )
             async with aiohttp.ClientSession() as session:
-                async with self._pool_recovery_lock:
-                    report = (
-                        await self.proxy_bootstrap.filter_working_proxies_from_sources(
-                            session=session, rewrite_sources=False
-                        )
-                    )
+                report = await self.proxy_bootstrap.filter_working_proxies_from_sources(
+                    session=session,
+                    rewrite_sources=False,
+                    replacement_lock=self._pool_recovery_lock,
+                )
 
             total_working = report.working if report else 0
             msg = f"🔄 **Автоматическая проверка прокси (Раз в 48 часов):**\n✅ Проверка завершена! Найдено живых прокси: **{total_working}**"
@@ -98,19 +92,19 @@ class ProxyTasksMixin:
         ):
             return False
 
-        async with self._pool_recovery_lock:
-            await self._notify_admins_proxy_recovery(reason)
-            try:
-                report = await self.proxy_bootstrap.filter_working_proxies_from_sources(
-                    self.proxy_session,
-                    rewrite_sources=False,
-                )
-                logger.info(
-                    "Emergency proxy check completed: %d/%d working",
-                    report.working,
-                    report.total,
-                )
-                return report.working > 0
-            except Exception as e:
-                logger.error("Emergency proxy check failed: %s", e, exc_info=True)
-                return False
+        await self._notify_admins_proxy_recovery(reason)
+        try:
+            report = await self.proxy_bootstrap.filter_working_proxies_from_sources(
+                self.proxy_session,
+                rewrite_sources=False,
+                replacement_lock=self._pool_recovery_lock,
+            )
+            logger.info(
+                "Emergency proxy check completed: %d/%d working",
+                report.working,
+                report.total,
+            )
+            return report.working > 0
+        except Exception as e:
+            logger.error("Emergency proxy check failed: %s", e, exc_info=True)
+            return False

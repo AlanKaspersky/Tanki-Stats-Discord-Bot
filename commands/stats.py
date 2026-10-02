@@ -64,6 +64,7 @@ class Stats(
                 "Ошибка запуска прокси; фоновые задачи попробуют восстановить пул"
             )
             await self.proxy_bootstrap.stop()
+            self.proxy_bootstrap = ProxyBootstrap(self.base_dir)
         self.daily_stats.start()
         self.auto_proxy_check.start()
         self.retry_pending_reports.start()

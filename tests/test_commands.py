@@ -4,7 +4,7 @@ import logging
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import discord
 from discord.ext import commands
@@ -154,6 +154,31 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
             denied.response.send_message.assert_awaited_once()
             self.assertTrue(await main.bot.tree.interaction_check(make_interaction(2)))
         await main.bot.close()
+
+    async def test_failed_start_allows_background_proxy_recovery(self):
+        failed = Mock(
+            start=AsyncMock(side_effect=RuntimeError("invalid cache")), stop=AsyncMock()
+        )
+        replacement = Mock(stop=AsyncMock())
+        loops = (
+            self.stats.daily_stats,
+            self.stats.auto_proxy_check,
+            self.stats.retry_pending_reports,
+        )
+        with patch("commands.stats.ProxyBootstrap", side_effect=[failed, replacement]):
+            with (
+                patch.object(loops[0], "start"),
+                patch.object(loops[1], "start"),
+                patch.object(loops[2], "start"),
+            ):
+                try:
+                    with self.assertLogs("commands.stats", level="ERROR"):
+                        await self.stats.cog_load()
+                    self.assertIs(self.stats.proxy_bootstrap, replacement)
+                    failed.stop.assert_awaited_once()
+                finally:
+                    await self.stats.cog_unload()
+        replacement.stop.assert_awaited_once()
 
     async def test_dry_run_does_not_save_or_send(self):
         self.stats.accounts_manager.add_user_to_account(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections import Counter
 from dataclasses import dataclass
 from typing import Awaitable, Callable, List, Optional
 
@@ -39,8 +40,17 @@ async def _check_single_proxy(
     proxy: ProxyConfig,
     test_user: str,
     timeout: aiohttp.ClientTimeout,
+    *,
+    failure_counts: Optional[Counter[str]] = None,
 ) -> bool:
     """True if HTTP proxy reaches Tanki ratings API."""
+
+    def failed(reason: str) -> bool:
+        if failure_counts is not None:
+            failure_counts[reason] += 1
+        logger.debug("Proxy %s health check failed: %s", proxy.id, reason)
+        return False
+
     try:
         async with session.get(
             API_URL,
@@ -51,12 +61,26 @@ async def _check_single_proxy(
             if response.status == 429:
                 return True
             if response.status != 200:
-                return False
-            payload = await response.json()
-            return isinstance(payload, dict) and "responseType" in payload
-    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as exc:
-        logger.debug("Proxy %s health check failed: %s", proxy.id, exc)
-        return False
+                return failed(f"HTTP {response.status}")
+            try:
+                payload = await response.json()
+            except (aiohttp.ContentTypeError, ValueError):
+                return failed("invalid JSON response")
+            if not isinstance(payload, dict) or "responseType" not in payload:
+                return failed("unexpected JSON schema")
+            return True
+    except asyncio.TimeoutError:
+        return failed("timeout")
+    except aiohttp.ClientHttpProxyError as exc:
+        return failed(f"proxy HTTP {exc.status}")
+    except aiohttp.ClientProxyConnectionError:
+        return failed("local proxy connection failed")
+    except aiohttp.ClientSSLError:
+        return failed("TLS error")
+    except aiohttp.ClientConnectionError:
+        return failed("connection error")
+    except (aiohttp.ClientError, ValueError) as exc:
+        return failed(type(exc).__name__)
 
 
 async def filter_working_proxies(
@@ -76,13 +100,16 @@ async def filter_working_proxies(
 
     working: List[ProxyConfig] = []
     failed_ids: List[str] = []
+    failure_counts: Counter[str] = Counter()
     lock = asyncio.Lock()
     checked = 0
     total = len(proxies)
 
     async def check_one(proxy: ProxyConfig) -> None:
         nonlocal checked
-        ok = await _check_single_proxy(session, proxy, test_user, timeout)
+        ok = await _check_single_proxy(
+            session, proxy, test_user, timeout, failure_counts=failure_counts
+        )
         async with lock:
             checked += 1
             if ok:
@@ -109,6 +136,13 @@ async def filter_working_proxies(
         total,
         len(failed_ids),
     )
+    if failure_counts:
+        logger.warning(
+            "Proxy health check failures: %s",
+            ", ".join(
+                f"{reason}: {count}" for reason, count in sorted(failure_counts.items())
+            ),
+        )
     return ProxyFilterReport(
         total=total,
         working=len(working),
