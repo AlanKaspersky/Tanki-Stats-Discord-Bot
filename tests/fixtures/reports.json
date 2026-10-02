@@ -1,0 +1,1646 @@
+{
+  "current": {
+    "name": "TestPlayer",
+    "score": 1601200,
+    "scoreNext": 1800000,
+    "earnedCrystals": 5000,
+    "kills": 50,
+    "deaths": 20,
+    "caughtGolds": 2,
+    "modesPlayed": [
+      {
+        "type": "DM",
+        "scoreEarned": 500,
+        "timePlayed": 300
+      },
+      {
+        "type": "CTF",
+        "scoreEarned": 600,
+        "timePlayed": 450
+      }
+    ],
+    "turretsPlayed": [
+      {
+        "id": "a",
+        "name": "Смоки",
+        "grade": 1,
+        "scoreEarned": 100,
+        "timePlayed": 50
+      },
+      {
+        "id": "b",
+        "name": "Смоки",
+        "grade": 2,
+        "scoreEarned": 200,
+        "timePlayed": 100
+      },
+      {
+        "id": "c",
+        "name": "Рельса",
+        "grade": 3,
+        "scoreEarned": 500,
+        "timePlayed": 300
+      }
+    ],
+    "hullsPlayed": [
+      {
+        "id": "h",
+        "name": "Хорнет",
+        "grade": 2,
+        "scoreEarned": 600,
+        "timePlayed": 300
+      }
+    ],
+    "resistanceModules": [
+      {
+        "id": "r",
+        "name": "Сокол",
+        "grade": 3,
+        "scoreEarned": 300,
+        "timePlayed": 200
+      }
+    ],
+    "dronesPlayed": [
+      {
+        "id": "d",
+        "name": "Кризис",
+        "scoreEarned": 700,
+        "timePlayed": 400
+      }
+    ],
+    "suppliesUsage": [
+      {
+        "id": "s",
+        "name": "Мина",
+        "usages": 20
+      }
+    ],
+    "paintsPlayed": [
+      {
+        "name": "Green"
+      }
+    ]
+  },
+  "previous": {
+    "score": 1601000,
+    "scoreNext": 1800000,
+    "earnedCrystals": 4500,
+    "kills": 45,
+    "deaths": 19,
+    "caughtGolds": 1,
+    "modesPlayed": [
+      {
+        "type": "DM",
+        "scoreEarned": 400,
+        "timePlayed": 200
+      },
+      {
+        "type": "TDM",
+        "scoreEarned": 50
+      }
+    ],
+    "turretsPlayed": [
+      {
+        "name": "Смоки",
+        "grade": 1,
+        "scoreEarned": 200,
+        "timePlayed": 80
+      }
+    ],
+    "hullsPlayed": [],
+    "resistanceModules": [],
+    "dronesPlayed": [
+      {
+        "id": "d",
+        "name": "Кризис",
+        "scoreEarned": 650
+      }
+    ],
+    "suppliesUsage": [
+      {
+        "id": "s",
+        "name": "Мина",
+        "usages": 15
+      }
+    ]
+  },
+  "cases": {
+    "normal": {
+      "previous": {
+        "score": 1601000,
+        "scoreNext": 1800000,
+        "earnedCrystals": 4500,
+        "kills": 45,
+        "deaths": 19,
+        "caughtGolds": 1,
+        "modesPlayed": [
+          {
+            "type": "DM",
+            "scoreEarned": 400,
+            "timePlayed": 200
+          },
+          {
+            "type": "TDM",
+            "scoreEarned": 50
+          }
+        ],
+        "turretsPlayed": [
+          {
+            "name": "Смоки",
+            "grade": 1,
+            "scoreEarned": 200,
+            "timePlayed": 80
+          }
+        ],
+        "hullsPlayed": [],
+        "resistanceModules": [],
+        "dronesPlayed": [
+          {
+            "id": "d",
+            "name": "Кризис",
+            "scoreEarned": 650
+          }
+        ],
+        "suppliesUsage": [
+          {
+            "id": "s",
+            "name": "Мина",
+            "usages": 15
+          }
+        ]
+      },
+      "difference": {
+        "earnedCrystals": 500,
+        "kills": 5,
+        "deaths": 1,
+        "caughtGolds": 1,
+        "score": 200,
+        "modes": {
+          "DM": {
+            "scoreEarned": 100
+          },
+          "CTF": {
+            "scoreEarned": 600
+          },
+          "TDM": {
+            "scoreEarned": -50
+          }
+        },
+        "turrets": {
+          "Смоки": {
+            "name": "Смоки",
+            "scoreEarned": 100
+          },
+          "Рельса": {
+            "name": "Рельса",
+            "scoreEarned": 500
+          }
+        },
+        "hulls": {
+          "Хорнет": {
+            "name": "Хорнет",
+            "scoreEarned": 600
+          }
+        },
+        "resistance": {
+          "Сокол": {
+            "name": "Сокол",
+            "scoreEarned": 300
+          }
+        },
+        "drones": {
+          "d": {
+            "name": "Кризис",
+            "scoreEarned": 50
+          }
+        },
+        "supplies": {
+          "s": {
+            "name": "Мина",
+            "usages": 5
+          }
+        }
+      },
+      "embeds": {
+        "ru": {
+          "footer": {
+            "text": "⚠️ Информация может обновляться с задержкой. Точные данные проверяйте в самой игре. В случае проблем обращайтесь к Kaspersky!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Личная статистика**",
+              "value": "<:113:1518312250962608238> Прирост кристаллов: +500\n<:111:1518311667530858617> Прирост убийств: +5\n<:112:1518312025170907156> Прирост смертей: +1\n<:114:1518312915252285490> Поймано голдов: +1"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по режимам**",
+              "value": "<:108:1518310355418480641> Захват флага: +600\n<:110:1518310748986544390> Каждый за себя: +100\n<:107:1518310058134339695> Командный бой: -50"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по пушкам**",
+              "value": "<:17:1515191064603132057> Рельса: +500\n<:18:1515191126347354223> Смоки: +100"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по корпусам**",
+              "value": "<:90:1518305702945226882> Хорнет: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по дронам**",
+              "value": "<:127:1518327371046977596> Кризис: +50"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по модулям**",
+              "value": "<:47:1442928291362373673> Сокол: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по припасам**",
+              "value": "<:119:1518313993960292502> Мина: +5"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Общий счет:** 1,601,200",
+          "title": "Статистика"
+        },
+        "en-US": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Personal stats**",
+              "value": "<:113:1518312250962608238> Crystal: +500\n<:111:1518311667530858617> Kill: +5\n<:112:1518312025170907156> Death: +1\n<:114:1518312915252285490> Gold Box: +1"
+            },
+            {
+              "inline": false,
+              "name": "**Mode score gain**",
+              "value": "<:108:1518310355418480641> Capture the Flag: +600\n<:110:1518310748986544390> Deathmatch: +100\n<:107:1518310058134339695> Team Deathmatch: -50"
+            },
+            {
+              "inline": false,
+              "name": "**Turret score gain**",
+              "value": "<:17:1515191064603132057> Railgun: +500\n<:18:1515191126347354223> Smoky: +100"
+            },
+            {
+              "inline": false,
+              "name": "**Hull score gain**",
+              "value": "<:90:1518305702945226882> Hornet: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Drone score gain**",
+              "value": "<:127:1518327371046977596> Crisis: +50"
+            },
+            {
+              "inline": false,
+              "name": "**Resistance module score gain**",
+              "value": "<:47:1442928291362373673> Falcon: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Supply usage gain**",
+              "value": "<:119:1518313993960292502> Mine: +5"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        },
+        "en-GB": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Personal stats**",
+              "value": "<:113:1518312250962608238> Crystal: +500\n<:111:1518311667530858617> Kill: +5\n<:112:1518312025170907156> Death: +1\n<:114:1518312915252285490> Gold Box: +1"
+            },
+            {
+              "inline": false,
+              "name": "**Mode score gain**",
+              "value": "<:108:1518310355418480641> Capture the Flag: +600\n<:110:1518310748986544390> Deathmatch: +100\n<:107:1518310058134339695> Team Deathmatch: -50"
+            },
+            {
+              "inline": false,
+              "name": "**Turret score gain**",
+              "value": "<:17:1515191064603132057> Railgun: +500\n<:18:1515191126347354223> Smoky: +100"
+            },
+            {
+              "inline": false,
+              "name": "**Hull score gain**",
+              "value": "<:90:1518305702945226882> Hornet: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Drone score gain**",
+              "value": "<:127:1518327371046977596> Crisis: +50"
+            },
+            {
+              "inline": false,
+              "name": "**Resistance module score gain**",
+              "value": "<:47:1442928291362373673> Falcon: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Supply usage gain**",
+              "value": "<:119:1518313993960292502> Mine: +5"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        }
+      }
+    },
+    "first": {
+      "previous": null,
+      "difference": {
+        "earnedCrystals": 5000,
+        "kills": 50,
+        "deaths": 20,
+        "caughtGolds": 2,
+        "score": 1601200,
+        "modes": {
+          "DM": {
+            "scoreEarned": 500
+          },
+          "CTF": {
+            "scoreEarned": 600
+          }
+        },
+        "turrets": {
+          "Смоки": {
+            "name": "Смоки",
+            "scoreEarned": 300
+          },
+          "Рельса": {
+            "name": "Рельса",
+            "scoreEarned": 500
+          }
+        },
+        "hulls": {
+          "Хорнет": {
+            "name": "Хорнет",
+            "scoreEarned": 600
+          }
+        },
+        "resistance": {
+          "Сокол": {
+            "name": "Сокол",
+            "scoreEarned": 300
+          }
+        },
+        "drones": {
+          "d": {
+            "name": "Кризис",
+            "scoreEarned": 700
+          }
+        },
+        "supplies": {
+          "s": {
+            "name": "Мина",
+            "usages": 20
+          }
+        }
+      },
+      "embeds": {
+        "ru": {
+          "footer": {
+            "text": "⚠️ Информация может обновляться с задержкой. Точные данные проверяйте в самой игре. В случае проблем обращайтесь к Kaspersky!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Личная статистика**",
+              "value": "<:113:1518312250962608238> Прирост кристаллов: +5000\n<:111:1518311667530858617> Прирост убийств: +50\n<:112:1518312025170907156> Прирост смертей: +20\n<:114:1518312915252285490> Поймано голдов: +2"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по режимам**",
+              "value": "<:108:1518310355418480641> Захват флага: +600\n<:110:1518310748986544390> Каждый за себя: +500"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по пушкам**",
+              "value": "<:17:1515191064603132057> Рельса: +500\n<:18:1515191126347354223> Смоки: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по корпусам**",
+              "value": "<:90:1518305702945226882> Хорнет: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по дронам**",
+              "value": "<:127:1518327371046977596> Кризис: +700"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по модулям**",
+              "value": "<:47:1442928291362373673> Сокол: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по припасам**",
+              "value": "<:119:1518313993960292502> Мина: +20"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Общий счет:** 1,601,200",
+          "title": "Статистика"
+        },
+        "en-US": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Personal stats**",
+              "value": "<:113:1518312250962608238> Crystal: +5000\n<:111:1518311667530858617> Kill: +50\n<:112:1518312025170907156> Death: +20\n<:114:1518312915252285490> Gold Box: +2"
+            },
+            {
+              "inline": false,
+              "name": "**Mode score gain**",
+              "value": "<:108:1518310355418480641> Capture the Flag: +600\n<:110:1518310748986544390> Deathmatch: +500"
+            },
+            {
+              "inline": false,
+              "name": "**Turret score gain**",
+              "value": "<:17:1515191064603132057> Railgun: +500\n<:18:1515191126347354223> Smoky: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Hull score gain**",
+              "value": "<:90:1518305702945226882> Hornet: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Drone score gain**",
+              "value": "<:127:1518327371046977596> Crisis: +700"
+            },
+            {
+              "inline": false,
+              "name": "**Resistance module score gain**",
+              "value": "<:47:1442928291362373673> Falcon: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Supply usage gain**",
+              "value": "<:119:1518313993960292502> Mine: +20"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        },
+        "en-GB": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Personal stats**",
+              "value": "<:113:1518312250962608238> Crystal: +5000\n<:111:1518311667530858617> Kill: +50\n<:112:1518312025170907156> Death: +20\n<:114:1518312915252285490> Gold Box: +2"
+            },
+            {
+              "inline": false,
+              "name": "**Mode score gain**",
+              "value": "<:108:1518310355418480641> Capture the Flag: +600\n<:110:1518310748986544390> Deathmatch: +500"
+            },
+            {
+              "inline": false,
+              "name": "**Turret score gain**",
+              "value": "<:17:1515191064603132057> Railgun: +500\n<:18:1515191126347354223> Smoky: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Hull score gain**",
+              "value": "<:90:1518305702945226882> Hornet: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Drone score gain**",
+              "value": "<:127:1518327371046977596> Crisis: +700"
+            },
+            {
+              "inline": false,
+              "name": "**Resistance module score gain**",
+              "value": "<:47:1442928291362373673> Falcon: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Supply usage gain**",
+              "value": "<:119:1518313993960292502> Mine: +20"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        }
+      }
+    },
+    "unchanged": {
+      "previous": {
+        "name": "TestPlayer",
+        "score": 1601200,
+        "scoreNext": 1800000,
+        "earnedCrystals": 5000,
+        "kills": 50,
+        "deaths": 20,
+        "caughtGolds": 2,
+        "modesPlayed": [
+          {
+            "type": "DM",
+            "scoreEarned": 500,
+            "timePlayed": 300
+          },
+          {
+            "type": "CTF",
+            "scoreEarned": 600,
+            "timePlayed": 450
+          }
+        ],
+        "turretsPlayed": [
+          {
+            "id": "a",
+            "name": "Смоки",
+            "grade": 2,
+            "scoreEarned": 300,
+            "timePlayed": 150
+          },
+          {
+            "id": "c",
+            "name": "Рельса",
+            "grade": 3,
+            "scoreEarned": 500,
+            "timePlayed": 300
+          }
+        ],
+        "hullsPlayed": [
+          {
+            "id": "h",
+            "name": "Хорнет",
+            "grade": 2,
+            "scoreEarned": 600,
+            "timePlayed": 300
+          }
+        ],
+        "resistanceModules": [
+          {
+            "id": "r",
+            "name": "Сокол",
+            "grade": 3,
+            "scoreEarned": 300,
+            "timePlayed": 200
+          }
+        ],
+        "dronesPlayed": [
+          {
+            "id": "d",
+            "name": "Кризис",
+            "scoreEarned": 700,
+            "timePlayed": 400
+          }
+        ],
+        "suppliesUsage": [
+          {
+            "id": "s",
+            "name": "Мина",
+            "usages": 20
+          }
+        ]
+      },
+      "difference": {
+        "earnedCrystals": 0,
+        "kills": 0,
+        "deaths": 0,
+        "caughtGolds": 0,
+        "score": 0,
+        "modes": {
+          "DM": {
+            "scoreEarned": 0
+          },
+          "CTF": {
+            "scoreEarned": 0
+          }
+        },
+        "turrets": {
+          "Смоки": {
+            "name": "Смоки",
+            "scoreEarned": 0
+          },
+          "Рельса": {
+            "name": "Рельса",
+            "scoreEarned": 0
+          }
+        },
+        "hulls": {
+          "Хорнет": {
+            "name": "Хорнет",
+            "scoreEarned": 0
+          }
+        },
+        "resistance": {
+          "Сокол": {
+            "name": "Сокол",
+            "scoreEarned": 0
+          }
+        },
+        "drones": {
+          "d": {
+            "name": "Кризис",
+            "scoreEarned": 0
+          }
+        },
+        "supplies": {
+          "s": {
+            "name": "Мина",
+            "usages": 0
+          }
+        }
+      },
+      "embeds": {
+        "ru": {
+          "footer": {
+            "text": "⚠️ Информация может обновляться с задержкой. Точные данные проверяйте в самой игре. В случае проблем обращайтесь к Kaspersky!"
+          },
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Общий счет:** 1,601,200",
+          "title": "Статистика"
+        },
+        "en-US": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        },
+        "en-GB": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        }
+      }
+    },
+    "reset": {
+      "previous": {
+        "score": 1601300,
+        "scoreNext": 1800000,
+        "earnedCrystals": 4500,
+        "kills": 55,
+        "deaths": 19,
+        "caughtGolds": 1,
+        "modesPlayed": [
+          {
+            "type": "DM",
+            "scoreEarned": 400,
+            "timePlayed": 200
+          },
+          {
+            "type": "TDM",
+            "scoreEarned": 50
+          }
+        ],
+        "turretsPlayed": [
+          {
+            "name": "Смоки",
+            "grade": 1,
+            "scoreEarned": 200,
+            "timePlayed": 80
+          }
+        ],
+        "hullsPlayed": [],
+        "resistanceModules": [],
+        "dronesPlayed": [
+          {
+            "id": "d",
+            "name": "Кризис",
+            "scoreEarned": 650
+          }
+        ],
+        "suppliesUsage": [
+          {
+            "id": "s",
+            "name": "Мина",
+            "usages": 15
+          }
+        ]
+      },
+      "difference": {
+        "earnedCrystals": 500,
+        "kills": -5,
+        "deaths": 1,
+        "caughtGolds": 1,
+        "score": -100,
+        "modes": {
+          "DM": {
+            "scoreEarned": 100
+          },
+          "CTF": {
+            "scoreEarned": 600
+          },
+          "TDM": {
+            "scoreEarned": -50
+          }
+        },
+        "turrets": {
+          "Смоки": {
+            "name": "Смоки",
+            "scoreEarned": 100
+          },
+          "Рельса": {
+            "name": "Рельса",
+            "scoreEarned": 500
+          }
+        },
+        "hulls": {
+          "Хорнет": {
+            "name": "Хорнет",
+            "scoreEarned": 600
+          }
+        },
+        "resistance": {
+          "Сокол": {
+            "name": "Сокол",
+            "scoreEarned": 300
+          }
+        },
+        "drones": {
+          "d": {
+            "name": "Кризис",
+            "scoreEarned": 50
+          }
+        },
+        "supplies": {
+          "s": {
+            "name": "Мина",
+            "usages": 5
+          }
+        }
+      },
+      "embeds": {
+        "ru": {
+          "footer": {
+            "text": "⚠️ Информация может обновляться с задержкой. Точные данные проверяйте в самой игре. В случае проблем обращайтесь к Kaspersky!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Личная статистика**",
+              "value": "<:113:1518312250962608238> Прирост кристаллов: +500\n<:111:1518311667530858617> Прирост убийств: -5\n<:112:1518312025170907156> Прирост смертей: +1\n<:114:1518312915252285490> Поймано голдов: +1"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по режимам**",
+              "value": "<:108:1518310355418480641> Захват флага: +600\n<:110:1518310748986544390> Каждый за себя: +100\n<:107:1518310058134339695> Командный бой: -50"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по пушкам**",
+              "value": "<:17:1515191064603132057> Рельса: +500\n<:18:1515191126347354223> Смоки: +100"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по корпусам**",
+              "value": "<:90:1518305702945226882> Хорнет: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по дронам**",
+              "value": "<:127:1518327371046977596> Кризис: +50"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по модулям**",
+              "value": "<:47:1442928291362373673> Сокол: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Прирост по припасам**",
+              "value": "<:119:1518313993960292502> Мина: +5"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Общий счет:** 1,601,200",
+          "title": "Статистика"
+        },
+        "en-US": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Personal stats**",
+              "value": "<:113:1518312250962608238> Crystal: +500\n<:111:1518311667530858617> Kill: -5\n<:112:1518312025170907156> Death: +1\n<:114:1518312915252285490> Gold Box: +1"
+            },
+            {
+              "inline": false,
+              "name": "**Mode score gain**",
+              "value": "<:108:1518310355418480641> Capture the Flag: +600\n<:110:1518310748986544390> Deathmatch: +100\n<:107:1518310058134339695> Team Deathmatch: -50"
+            },
+            {
+              "inline": false,
+              "name": "**Turret score gain**",
+              "value": "<:17:1515191064603132057> Railgun: +500\n<:18:1515191126347354223> Smoky: +100"
+            },
+            {
+              "inline": false,
+              "name": "**Hull score gain**",
+              "value": "<:90:1518305702945226882> Hornet: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Drone score gain**",
+              "value": "<:127:1518327371046977596> Crisis: +50"
+            },
+            {
+              "inline": false,
+              "name": "**Resistance module score gain**",
+              "value": "<:47:1442928291362373673> Falcon: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Supply usage gain**",
+              "value": "<:119:1518313993960292502> Mine: +5"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        },
+        "en-GB": {
+          "footer": {
+            "text": "⚠️ Stats may be delayed. Check the game for the most accurate data. Contact Kaspersky if you have any issues!"
+          },
+          "fields": [
+            {
+              "inline": false,
+              "name": "**Personal stats**",
+              "value": "<:113:1518312250962608238> Crystal: +500\n<:111:1518311667530858617> Kill: -5\n<:112:1518312025170907156> Death: +1\n<:114:1518312915252285490> Gold Box: +1"
+            },
+            {
+              "inline": false,
+              "name": "**Mode score gain**",
+              "value": "<:108:1518310355418480641> Capture the Flag: +600\n<:110:1518310748986544390> Deathmatch: +100\n<:107:1518310058134339695> Team Deathmatch: -50"
+            },
+            {
+              "inline": false,
+              "name": "**Turret score gain**",
+              "value": "<:17:1515191064603132057> Railgun: +500\n<:18:1515191126347354223> Smoky: +100"
+            },
+            {
+              "inline": false,
+              "name": "**Hull score gain**",
+              "value": "<:90:1518305702945226882> Hornet: +600"
+            },
+            {
+              "inline": false,
+              "name": "**Drone score gain**",
+              "value": "<:127:1518327371046977596> Crisis: +50"
+            },
+            {
+              "inline": false,
+              "name": "**Resistance module score gain**",
+              "value": "<:47:1442928291362373673> Falcon: +300"
+            },
+            {
+              "inline": false,
+              "name": "**Supply usage gain**",
+              "value": "<:119:1518313993960292502> Mine: +5"
+            }
+          ],
+          "flags": 0,
+          "color": 16777215,
+          "timestamp": "2026-01-01T00:00:00+00:00",
+          "type": "rich",
+          "description": "**Total score:** 1,601,200",
+          "title": "Statistics"
+        }
+      }
+    }
+  },
+  "widget": {
+    "username": "TestPlayer",
+    "data": {
+      "dynamic": [
+        {
+          "type": 1,
+          "name": "nickname",
+          "value": "TestPlayer"
+        },
+        {
+          "type": 1,
+          "name": "rank",
+          "value": "Legend 1"
+        },
+        {
+          "type": 1,
+          "name": "score / scoreNext",
+          "value": "1 601 200 / 1 800 000"
+        },
+        {
+          "type": 2,
+          "name": "playTime",
+          "value": 750
+        },
+        {
+          "type": 1,
+          "name": "game",
+          "value": "<@$1129504740301086812>"
+        },
+        {
+          "type": 1,
+          "name": "kills",
+          "value": "50"
+        },
+        {
+          "type": 1,
+          "name": "deaths",
+          "value": "20"
+        },
+        {
+          "type": 1,
+          "name": "kills/deaths",
+          "value": "2,50"
+        },
+        {
+          "type": 1,
+          "name": "BestTurret",
+          "value": "Рельса"
+        },
+        {
+          "type": 1,
+          "name": "BestHull",
+          "value": "Хорнет"
+        }
+      ]
+    }
+  },
+  "views": {
+    "ru": {
+      "info": [
+        {
+          "type": 17,
+          "accent_color": 16448250,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## ⚙️ Tanki Stats\n**Tanki Stats** — это асинхронный аналитический трекер для Танков Онлайн, который автоматизирует сбор игровой статистики, преобразует сухие данные API в красивые профили и позволяет кланам или друзьям в реальном времени мониторить свой игровой прогресс прямо в Discord."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📌 Основная информация\n- **Разработчики:** <@570644931841097728> и <@589024114791153676>\n- **Язык программирования:** `Python 3.11.2`\n  - **Инфраструктура:** `VLESS-Tunneling` `Xray-Multi-Routing`\n  - **Используется:** `asyncio`  `json`  `pathlib (Path)`  `subprocess`  `urllib.parse (urlparse, parse_qs)`  `hashlib`  `base64`  `logging`\n- **Библиотеки:** `discord.py 2.7.1`  `aiohttp 3.8.0`  `pytz 2023.1`  `python-dotenv 1.0.0`\n- **Версия:** `3.1.7.91837`\n- **Дата создания:** 25 ноября 2025 г."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📊 Статистика бота\n- **Количество аккаунтов:** `3`\n- **Количество серверов:** `2`\n- **Пинг:** `20ms`"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🔗 Полезные ссылки"
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Условия использования (на английском)"
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Terms of Service",
+                "url": "https://sites.google.com/view/tankistats-terms-of-service"
+              }
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 1
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Политика конфиденциальности (на английском)"
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Privacy Policy",
+                "url": "https://sites.google.com/view/tankistats-ptivacy-policy"
+              }
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 1
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Не забудьте посетить наш второй проект в Telegram, где вы можете получить расширенную информацию о своем аккаунте Танков Онлайн"
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Tanki Ratings",
+                "url": "https://t.me/tankirating_bot"
+              }
+            },
+            {
+              "type": 10,
+              "content": "-# <:135:1518725252971106364> Kaspersky x Tenobyte, 2026 © Все права защищены."
+            }
+          ]
+        }
+      ],
+      "help": [
+        {
+          "type": 17,
+          "accent_color": 16777215,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## ℹ️ Справка по командам статистики\nЕсли у вас остались какие-нибудь вопросы или возникли проблемы, вы можете обратиться за консультацией к <@570644931841097728>. Бот также был создан совместно с <@589024114791153676>."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### ✅ </add:1515660487637864490>\nДобавление аккаунта для отслеживания статистики. В атрибут `nickname` вы должны ввести любой желаемый никнейм (регистр не имеет значения), а в `account_name` по желанию можно ввести кастомное название вашей привязки.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📛 </remove:1515660487637864491>\nПри удалении аккаунта вы должны ввести либо никнейм (регистр не имеет значения), либо кастомное название привязки.\n\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📋 </list:1515660487637864492>\nЗдесь вы можете просмотреть список ваших привязанных аккаунтов.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📜 </info:1519048336362045482>\nЗдесь предоставлена вся доступная информация о боте.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🆘 </help:1515660487637864493>\nЗдесь вы можете просмотреть всю информацию о боте."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🔒 Ограничения по статистике\n\n- У вас максимум может быть **3** привязанных аккаунтов.\n- У вас: **1/3**\n- Осталось слотов: **2**"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📝 Примечания\n\n- Удаление аккаунта удаляет его только из вашего списка. Если его отслеживают другие пользователи, то он останется в базе данных бота.\n- Статистика отправляется ежедневно в момент рестарта серверов Танков Онлайн в 5:00 по Московскому времени (2:00 UTC).\n\n- Используйте `/language`, чтобы выбрать русский, English (US), English (UK) или автоматическое определение языка Discord.\n\n"
+            },
+            {
+              "type": 10,
+              "content": "-# <:135:1518725252971106364> © Kaspersky x Tenobyte, 2026. Все права защищены."
+            }
+          ]
+        }
+      ],
+      "list": [
+        {
+          "type": 17,
+          "accent_color": 16777215,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## 📊 Ваши аккаунты\nЗдесь вы можете просмотреть все свои привязанные аккаунты. Не забывайте, что максимальное количество привязок составляет **3** штуки!"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### ℹ️ Main\n- **Никнейм:** TestPlayer\n- **Метод отправки:** Личные сообщения\n- **Дата привязки:** Не указана"
+            }
+          ]
+        }
+      ]
+    },
+    "en-US": {
+      "info": [
+        {
+          "type": 17,
+          "accent_color": 16448250,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## ⚙️ Tanki Stats\n**Tanki Stats** is an asynchronous analytics tracker for Tanki Online. It collects game statistics, turns API data into clear reports, and helps players and clans follow their progress in Discord."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📌 About\n- **Developers:** <@570644931841097728> and <@589024114791153676>\n- **Language:** `Python 3.11.2`\n  - **Infrastructure:** `VLESS-Tunneling` `Xray-Multi-Routing`\n  - **Libraries:** `discord.py` `aiohttp` `pytz` `python-dotenv`\n- **Version:** `3.1.7.91837`\n- **Created:** November 25, 2025"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📊 Bot statistics\n- **Tracked accounts:** `3`\n- **Servers:** `2`\n- **Ping:** `20ms`"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🔗 Useful links"
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Terms of Service"
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Terms of Service",
+                "url": "https://sites.google.com/view/tankistats-terms-of-service"
+              }
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 1
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Privacy Policy"
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Privacy Policy",
+                "url": "https://sites.google.com/view/tankistats-ptivacy-policy"
+              }
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 1
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Visit our Telegram project for more detailed Tanki Online account information."
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Tanki Ratings",
+                "url": "https://t.me/tankirating_bot"
+              }
+            },
+            {
+              "type": 10,
+              "content": "-# <:135:1518725252971106364> Kaspersky x Tenobyte, 2026 © All rights reserved."
+            }
+          ]
+        }
+      ],
+      "help": [
+        {
+          "type": 17,
+          "accent_color": 16777215,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## ℹ️ Statistics command help\nFor help, contact <@570644931841097728>. This bot was created with <@589024114791153676>."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### ✅ </add:1515660487637864490>\nAdd an account to track. Enter the player's nickname; matching is case-insensitive. You can optionally set a custom `account_name`.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📛 </remove:1515660487637864491>\nRemove an account by its nickname or custom account name. Matching is case-insensitive.\n\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📋 </list:1515660487637864492>\nView the accounts you are tracking.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📜 </info:1519048336362045482>\nView information and live statistics for the bot.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🆘 </help:1515660487637864493>\nShow this help page."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🔒 Tracking limits\n\n- Maximum linked accounts: **3**\n- You are using: **1/3**\n- Slots remaining: **2**"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📝 Notes\n\n- Removing an account only removes it from your list. If others track it, the bot keeps it in its database.\n- Stats are sent daily around 02:00 UTC (05:00 Moscow time), during the Tanki Online server restart.\n\n- Use `/language` to choose Russian, English (US), English (UK), or automatic Discord language detection.\n\n"
+            },
+            {
+              "type": 10,
+              "content": "-# <:135:1518725252971106364> © Kaspersky x Tenobyte, 2026. All rights reserved."
+            }
+          ]
+        }
+      ],
+      "list": [
+        {
+          "type": 17,
+          "accent_color": 16777215,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## 📊 Your accounts\nThese are the accounts linked to you. You can track up to **3** accounts."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### ℹ️ Main\n- **Nickname:** TestPlayer\n- **Delivery:** Direct messages\n- **Linked:** Not specified"
+            }
+          ]
+        }
+      ]
+    },
+    "en-GB": {
+      "info": [
+        {
+          "type": 17,
+          "accent_color": 16448250,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## ⚙️ Tanki Stats\n**Tanki Stats** is an asynchronous analytics tracker for Tanki Online. It collects game statistics, turns API data into clear reports, and helps players and clans follow their progress in Discord."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📌 About\n- **Developers:** <@570644931841097728> and <@589024114791153676>\n- **Language:** `Python 3.11.2`\n  - **Infrastructure:** `VLESS-Tunneling` `Xray-Multi-Routing`\n  - **Libraries:** `discord.py` `aiohttp` `pytz` `python-dotenv`\n- **Version:** `3.1.7.91837`\n- **Created:** November 25, 2025"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📊 Bot statistics\n- **Tracked accounts:** `3`\n- **Servers:** `2`\n- **Ping:** `20ms`"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🔗 Useful links"
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Terms of Service"
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Terms of Service",
+                "url": "https://sites.google.com/view/tankistats-terms-of-service"
+              }
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 1
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Privacy Policy"
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Privacy Policy",
+                "url": "https://sites.google.com/view/tankistats-ptivacy-policy"
+              }
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 1
+            },
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "Visit our Telegram project for more detailed Tanki Online account information."
+                }
+              ],
+              "accessory": {
+                "type": 2,
+                "style": 5,
+                "disabled": false,
+                "label": "Tanki Ratings",
+                "url": "https://t.me/tankirating_bot"
+              }
+            },
+            {
+              "type": 10,
+              "content": "-# <:135:1518725252971106364> Kaspersky x Tenobyte, 2026 © All rights reserved."
+            }
+          ]
+        }
+      ],
+      "help": [
+        {
+          "type": 17,
+          "accent_color": 16777215,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## ℹ️ Statistics command help\nFor help, contact <@570644931841097728>. This bot was created with <@589024114791153676>."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### ✅ </add:1515660487637864490>\nAdd an account to track. Enter the player's nickname; matching is case-insensitive. You can optionally set a custom `account_name`.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📛 </remove:1515660487637864491>\nRemove an account by its nickname or custom account name. Matching is case-insensitive.\n\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📋 </list:1515660487637864492>\nView the accounts you are tracking.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📜 </info:1519048336362045482>\nView information and live statistics for the bot.\n"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🆘 </help:1515660487637864493>\nShow this help page."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 🔒 Tracking limits\n\n- Maximum linked accounts: **3**\n- You are using: **1/3**\n- Slots remaining: **2**"
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### 📝 Notes\n\n- Removing an account only removes it from your list. If others track it, the bot keeps it in its database.\n- Stats are sent daily around 02:00 UTC (05:00 Moscow time), during the Tanki Online server restart.\n\n- Use `/language` to choose Russian, English (US), English (UK), or automatic Discord language detection.\n\n"
+            },
+            {
+              "type": 10,
+              "content": "-# <:135:1518725252971106364> © Kaspersky x Tenobyte, 2026. All rights reserved."
+            }
+          ]
+        }
+      ],
+      "list": [
+        {
+          "type": 17,
+          "accent_color": 16777215,
+          "spoiler": false,
+          "components": [
+            {
+              "type": 10,
+              "content": "## 📊 Your accounts\nThese are the accounts linked to you. You can track up to **3** accounts."
+            },
+            {
+              "type": 14,
+              "divider": true,
+              "spacing": 2
+            },
+            {
+              "type": 10,
+              "content": "### ℹ️ Main\n- **Nickname:** TestPlayer\n- **Delivery:** Direct messages\n- **Linked:** Not specified"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
